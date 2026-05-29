@@ -42,15 +42,20 @@ export default defineConfig(({ mode, command }) => {
     },
     // vite 相关配置
     server: {
-      port: 80,
+      port: 3100,
       host: true,
-      open: true,
+      open: false,
+      allowedHosts: true,
       proxy: {
         // https://cn.vitejs.dev/config/#server-proxy
         '/dev-api': {
           target: baseUrl,
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/dev-api/, '')
+        },
+        '/system/sentiment/image': {
+          target: baseUrl,
+          changeOrigin: true
         },
          // springdoc proxy
          '^/v3/api-docs/(.*)': {
