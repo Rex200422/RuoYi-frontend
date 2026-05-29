@@ -25,6 +25,20 @@
         📰 <span>新闻资讯库</span>
         <span v-if="newsTotal > 0" class="nav-badge" style="background:#27ae60;">{{ newsTotal }}</span>
       </button>
+      <button
+        class="tab-nav-item"
+        :class="{ active: activeTab === 'crawlConfig' }"
+        @click="switchTab('crawlConfig')"
+      >
+        ⚙️ <span>爬取配置</span>
+      </button>
+      <button
+        class="tab-nav-item"
+        :class="{ active: activeTab === 'crawlLog' }"
+        @click="switchTab('crawlLog')"
+      >
+        📋 <span>爬取日志</span>
+      </button>
     </div>
 
     <!-- ========== 仪表盘 ========== -->
@@ -341,6 +355,196 @@
       </div>
     </div>
 
+    <!-- ========== 爬取配置 ========== -->
+    <div v-show="activeTab === 'crawlConfig'" class="page-section">
+      <div class="top-bar">
+        <div class="search-box">
+          <input
+            v-model="crawlConfigSearch"
+            type="text"
+            placeholder="搜索站点名称、关键词..."
+          />
+          <span class="search-icon">🔍</span>
+        </div>
+        <button class="btn btn-outline btn-sm" @click="loadCrawlConfigs">🔄 刷新</button>
+        <button class="btn btn-outline btn-sm" @click="handleTriggerAll" :disabled="crawlConfigsLoading">⚡ 触发全部</button>
+        <button class="btn btn-primary btn-sm" @click="openConfigForm()">➕ 新增配置</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="dot dot-blue"></span>爬取任务配置</span>
+          <span class="count-indicator">共 {{ crawlConfigTotal }} 条</span>
+        </div>
+        <div class="table-wrapper">
+          <table v-if="filteredCrawlConfigs.length > 0">
+            <thead>
+              <tr>
+                <th>站点名称</th>
+                <th>关键词</th>
+                <th>爬取间隔</th>
+                <th>最大结果数</th>
+                <th>上次爬取时间</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="config in filteredCrawlConfigs" :key="config.id">
+                <td>
+                  <span class="site-badge">{{ config.siteName }}</span>
+                </td>
+                <td>
+                  <span
+                    v-for="kw in parseKeywords(config.keyword)"
+                    :key="kw"
+                    class="keyword-tag"
+                  >{{ kw }}</span>
+                </td>
+                <td style="white-space:nowrap;">{{ formatInterval(config.intervalMinutes) }}</td>
+                <td>{{ config.maxResults }}</td>
+                <td style="font-size:12px;white-space:nowrap;">{{ config.lastCrawlTime || '—' }}</td>
+                <td>
+                  <el-switch
+                    v-model="config.enabled"
+                    :active-value="1"
+                    :inactive-value="0"
+                    @change="handleToggleEnabled(config)"
+                    size="small"
+                  />
+                </td>
+                <td>
+                  <div class="action-btns">
+                    <button class="btn btn-outline btn-sm" @click="openConfigForm(config)">编辑</button>
+                    <button class="btn btn-outline btn-sm" @click="handleTriggerSingle(config)" :disabled="config._triggering">触发</button>
+                    <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" @click="handleDeleteConfig(config)">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state">
+            <div class="icon">⚙️</div>
+            <p>暂无爬取配置</p>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper">
+          <el-pagination
+            v-model:current-page="crawlConfigQuery.pageNum"
+            v-model:page-size="crawlConfigQuery.pageSize"
+            :page-sizes="[10, 20, 50]"
+            :total="crawlConfigTotal"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="loadCrawlConfigs"
+            @current-change="loadCrawlConfigs"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 爬取日志 ========== -->
+    <div v-show="activeTab === 'crawlLog'" class="page-section">
+      <div class="top-bar">
+        <div class="search-box">
+          <input
+            v-model="crawlLogSearch"
+            type="text"
+            placeholder="搜索站点名称、关键词..."
+          />
+          <span class="search-icon">🔍</span>
+        </div>
+        <div class="filter-pills">
+          <span
+            class="filter-pill"
+            :class="{ active: crawlLogSelectedSites.size === 0 }"
+            @click="handleCrawlLogFilter('all')"
+          >全部站点</span>
+          <span
+            v-for="site in crawlLogSiteFilters"
+            :key="site"
+            class="filter-pill"
+            :class="{ active: crawlLogSelectedSites.has(site) }"
+            @click="handleCrawlLogFilter(site)"
+          >{{ site }}</span>
+        </div>
+        <button class="btn btn-outline btn-sm" @click="loadCrawlLogs">🔄 刷新</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="dot dot-green"></span>爬取任务日志</span>
+          <span class="count-indicator">共 {{ crawlLogTotal }} 条{{ crawlLogSelectedSites.size > 0 ? ' (已筛选)' : '' }}</span>
+        </div>
+        <div class="table-wrapper">
+          <table v-if="filteredCrawlLogs.length > 0">
+            <thead>
+              <tr>
+                <th>站点名称</th>
+                <th>关键词</th>
+                <th>状态</th>
+                <th>开始时间</th>
+                <th>结束时间</th>
+                <th>抓取数</th>
+                <th>保存数</th>
+                <th>错误信息</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in filteredCrawlLogs" :key="log.id">
+                <td>
+                  <span class="site-badge">{{ log.siteName }}</span>
+                </td>
+                <td>
+                  <span
+                    v-for="kw in parseKeywords(log.keyword)"
+                    :key="kw"
+                    class="keyword-tag"
+                  >{{ kw }}</span>
+                </td>
+                <td>
+                  <span :class="['status-badge', 'status-' + log.status]">{{ formatCrawlStatus(log.status) }}</span>
+                </td>
+                <td style="font-size:12px;white-space:nowrap;">{{ log.startTime || '—' }}</td>
+                <td style="font-size:12px;white-space:nowrap;">{{ log.endTime || '—' }}</td>
+                <td><strong>{{ log.itemsFound || 0 }}</strong></td>
+                <td><strong>{{ log.itemsSaved || 0 }}</strong></td>
+                <td>
+                  <el-tooltip
+                    v-if="log.errorMsg"
+                    :content="log.errorMsg"
+                    placement="top"
+                    :show-after="300"
+                  >
+                    <span class="error-hint">⚠️ 查看详情</span>
+                  </el-tooltip>
+                  <span v-else style="color:#aaa;font-size:12px;">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state">
+            <div class="icon">📋</div>
+            <p>暂无爬取日志</p>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper">
+          <el-pagination
+            v-model:current-page="crawlLogQuery.pageNum"
+            v-model:page-size="crawlLogQuery.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="crawlLogTotal"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="loadCrawlLogs"
+            @current-change="loadCrawlLogs"
+          />
+        </div>
+      </div>
+    </div>
+
     <!-- ========== 详情弹窗 ========== -->
     <div class="modal-overlay" v-if="showModal" @click.self="closeModal">
       <div class="modal" @click.stop>
@@ -416,6 +620,46 @@
 
     <!-- Toast -->
     <div v-if="toastVisible" class="toast">{{ toastMessage }}</div>
+
+    <!-- ========== 爬取配置表单弹窗 ========== -->
+    <div class="modal-overlay" v-if="showConfigForm" @click.self="closeConfigForm">
+      <div class="modal" style="max-width:500px;" @click.stop>
+        <button class="modal-close" @click="closeConfigForm">✕</button>
+        <h2>⚙️ {{ configForm.id ? '编辑配置' : '新增配置' }}</h2>
+        <div style="margin-top:16px;">
+          <div class="form-group">
+            <label class="form-label">站点名称</label>
+            <input v-model="configForm.siteName" class="form-input" placeholder="例如：微博、知乎、贴吧" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">关键词</label>
+            <input v-model="configForm.keyword" class="form-input" placeholder="多个关键词用逗号分隔" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">爬取间隔（分钟）</label>
+            <input v-model.number="configForm.intervalMinutes" type="number" class="form-input" placeholder="例如：60" min="1" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">最大结果数</label>
+            <input v-model.number="configForm.maxResults" type="number" class="form-input" placeholder="例如：100" min="1" />
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:12px;">
+            <label class="form-label" style="margin:0;">启用状态</label>
+            <el-switch
+              v-model="configForm.enabled"
+              :active-value="1"
+              :inactive-value="0"
+            />
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
+          <button class="btn btn-outline" @click="closeConfigForm">取消</button>
+          <button class="btn btn-primary" @click="submitConfigForm" :disabled="configFormSubmitting">
+            {{ configFormSubmitting ? '提交中...' : '确认提交' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -426,6 +670,11 @@ import { listPost } from '@/api/sentiment/post'
 import { listCommentByPost } from '@/api/sentiment/comment'
 import { listNews } from '@/api/sentiment/news'
 import { listImagesByPost } from '@/api/sentiment/image'
+import {
+  listCrawlConfig, getCrawlConfig, addCrawlConfig, updateCrawlConfig,
+  delCrawlConfig, triggerCrawl, triggerAllCrawl,
+  listCrawlLog, getCrawlLogStats
+} from '@/api/sentiment/crawl'
 
 defineOptions({ name: 'SentimentAnalysis' })
 
@@ -844,10 +1093,258 @@ function exportPressCSV() {
   showToast('✅ 报刊数据已导出CSV！')
 }
 
+// ==================== Crawl Config State ====================
+const crawlConfigs = ref([])
+const crawlConfigTotal = ref(0)
+const crawlConfigsLoading = ref(false)
+const crawlConfigSearch = ref('')
+const crawlConfigQuery = reactive({ pageNum: 1, pageSize: 20 })
+
+// ==================== Crawl Config Form ====================
+const showConfigForm = ref(false)
+const configFormSubmitting = ref(false)
+const configForm = reactive({
+  id: null,
+  siteName: '',
+  keyword: '',
+  intervalMinutes: 60,
+  maxResults: 100,
+  enabled: 1
+})
+
+// ==================== Crawl Logs State ====================
+const crawlLogs = ref([])
+const crawlLogTotal = ref(0)
+const crawlLogsLoading = ref(false)
+const crawlLogSearch = ref('')
+const crawlLogQuery = reactive({ pageNum: 1, pageSize: 20 })
+const crawlLogSelectedSites = ref(new Set())
+const crawlLogSiteFilters = ref([])
+
+// ==================== Crawl Computed ====================
+const filteredCrawlConfigs = computed(() => {
+  if (!crawlConfigSearch.value) return crawlConfigs.value
+  const s = crawlConfigSearch.value.toLowerCase()
+  return crawlConfigs.value.filter(c =>
+    (c.siteName && c.siteName.toLowerCase().includes(s)) ||
+    (c.keyword && c.keyword.toLowerCase().includes(s))
+  )
+})
+
+const filteredCrawlLogs = computed(() => {
+  let list = crawlLogs.value
+  if (crawlLogSelectedSites.value.size > 0) {
+    list = list.filter(l => crawlLogSelectedSites.value.has(l.siteName))
+  }
+  if (crawlLogSearch.value) {
+    const s = crawlLogSearch.value.toLowerCase()
+    list = list.filter(l =>
+      (l.siteName && l.siteName.toLowerCase().includes(s)) ||
+      (l.keyword && l.keyword.toLowerCase().includes(s))
+    )
+  }
+  return list
+})
+
+// ==================== Crawl Config Methods ====================
+async function loadCrawlConfigs() {
+  crawlConfigsLoading.value = true
+  try {
+    const params = {
+      pageNum: crawlConfigQuery.pageNum,
+      pageSize: crawlConfigQuery.pageSize
+    }
+    const res = await listCrawlConfig(params)
+    crawlConfigs.value = (res.rows || []).map(c => ({ ...c, _triggering: false }))
+    crawlConfigTotal.value = res.total || 0
+  } catch (e) {
+    console.error('加载爬取配置失败:', e)
+    ElMessage.error('加载爬取配置失败')
+  } finally {
+    crawlConfigsLoading.value = false
+  }
+}
+
+function formatInterval(minutes) {
+  if (!minutes) return '—'
+  if (minutes >= 1440) return (minutes / 1440) + '天'
+  if (minutes >= 60) return (minutes / 60) + '小时'
+  return minutes + '分钟'
+}
+
+function openConfigForm(config) {
+  if (config) {
+    Object.assign(configForm, {
+      id: config.id,
+      siteName: config.siteName,
+      keyword: config.keyword,
+      intervalMinutes: config.intervalMinutes,
+      maxResults: config.maxResults,
+      enabled: config.enabled
+    })
+  } else {
+    Object.assign(configForm, {
+      id: null,
+      siteName: '',
+      keyword: '',
+      intervalMinutes: 60,
+      maxResults: 100,
+      enabled: 1
+    })
+  }
+  showConfigForm.value = true
+  document.body.style.overflow = 'hidden'
+}
+
+function closeConfigForm() {
+  showConfigForm.value = false
+  document.body.style.overflow = ''
+}
+
+async function submitConfigForm() {
+  if (!configForm.siteName || !configForm.keyword) {
+    ElMessage.warning('请填写站点名称和关键词')
+    return
+  }
+  configFormSubmitting.value = true
+  try {
+    const data = {
+      siteName: configForm.siteName,
+      keyword: configForm.keyword,
+      intervalMinutes: configForm.intervalMinutes,
+      maxResults: configForm.maxResults,
+      enabled: configForm.enabled
+    }
+    if (configForm.id) {
+      data.id = configForm.id
+      await updateCrawlConfig(data)
+      showToast('✅ 配置已更新')
+    } else {
+      await addCrawlConfig(data)
+      showToast('✅ 配置已新增')
+    }
+    closeConfigForm()
+    loadCrawlConfigs()
+  } catch (e) {
+    console.error('保存配置失败:', e)
+    ElMessage.error('保存配置失败')
+  } finally {
+    configFormSubmitting.value = false
+  }
+}
+
+async function handleDeleteConfig(config) {
+  if (!confirm('确定要删除该爬取配置？')) return
+  try {
+    await delCrawlConfig(config.id)
+    showToast('✅ 配置已删除')
+    loadCrawlConfigs()
+  } catch (e) {
+    console.error('删除配置失败:', e)
+    ElMessage.error('删除配置失败')
+  }
+}
+
+async function handleToggleEnabled(config) {
+  try {
+    await updateCrawlConfig({
+      id: config.id,
+      siteName: config.siteName,
+      keyword: config.keyword,
+      intervalMinutes: config.intervalMinutes,
+      maxResults: config.maxResults,
+      enabled: config.enabled
+    })
+    showToast(config.enabled ? '✅ 已启用' : '⏸️ 已禁用')
+  } catch (e) {
+    console.error('更新状态失败:', e)
+    // Revert on error
+    config.enabled = config.enabled === 1 ? 0 : 1
+    ElMessage.error('更新状态失败')
+  }
+}
+
+async function handleTriggerSingle(config) {
+  config._triggering = true
+  try {
+    await triggerCrawl(config.id)
+    showToast('⚡ 爬取任务已触发')
+  } catch (e) {
+    console.error('触发爬取失败:', e)
+    ElMessage.error('触发爬取失败')
+  } finally {
+    config._triggering = false
+  }
+}
+
+async function handleTriggerAll() {
+  try {
+    await triggerAllCrawl()
+    showToast('⚡ 全部爬取任务已触发')
+  } catch (e) {
+    console.error('触发全部失败:', e)
+    ElMessage.error('触发全部失败')
+  }
+}
+
+// ==================== Crawl Logs Methods ====================
+async function loadCrawlLogs() {
+  crawlLogsLoading.value = true
+  try {
+    const params = {
+      pageNum: crawlLogQuery.pageNum,
+      pageSize: crawlLogQuery.pageSize
+    }
+    if (crawlLogSearch.value) params.siteName = crawlLogSearch.value
+    const res = await listCrawlLog(params)
+    crawlLogs.value = res.rows || []
+    crawlLogTotal.value = res.total || 0
+    updateCrawlLogSiteFilters()
+  } catch (e) {
+    console.error('加载爬取日志失败:', e)
+    ElMessage.error('加载爬取日志失败')
+  } finally {
+    crawlLogsLoading.value = false
+  }
+}
+
+function updateCrawlLogSiteFilters() {
+  const siteSet = new Set()
+  crawlLogs.value.forEach(l => {
+    if (l.siteName) siteSet.add(l.siteName)
+  })
+  crawlLogSiteFilters.value = Array.from(siteSet)
+}
+
+function handleCrawlLogFilter(filter) {
+  if (filter === 'all') {
+    crawlLogSelectedSites.value = new Set()
+  } else {
+    const newSet = new Set(crawlLogSelectedSites.value)
+    if (newSet.has(filter)) {
+      newSet.delete(filter)
+    } else {
+      newSet.add(filter)
+    }
+    crawlLogSelectedSites.value = newSet
+  }
+}
+
+function formatCrawlStatus(status) {
+  const map = {
+    'success': '成功',
+    'failed': '失败',
+    'running': '运行中'
+  }
+  return map[status] || status || '未知'
+}
+
 // ==================== Initialization ====================
 onMounted(() => {
   loadPosts()
   loadNews()
+  loadCrawlConfigs()
+  loadCrawlLogs()
 })
 </script>
 
@@ -1644,5 +2141,85 @@ table tbody tr,
 
 .sentiment-container ::-webkit-scrollbar-thumb:hover {
   background: #b0b5bd;
+}
+
+/* ========== Status Badges ========== */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-success {
+  background: #e6f9f0;
+  color: #27ae60;
+}
+
+.status-failed {
+  background: #fde8e8;
+  color: #e74c3c;
+}
+
+.status-running {
+  background: #eef1fe;
+  color: #4f6ef7;
+}
+
+/* ========== Error Hint ========== */
+.error-hint {
+  color: #e74c3c;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.error-hint:hover {
+  text-decoration: underline;
+}
+
+/* ========== Form Styles ========== */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: #fff;
+  transition: var(--transition);
+  outline: none;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(79, 110, 247, 0.08);
+}
+
+/* ========== Action Buttons Row ========== */
+.action-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* ========== Switch Override ========== */
+.el-switch {
+  --el-switch-on-color: var(--primary);
 }
 </style>
