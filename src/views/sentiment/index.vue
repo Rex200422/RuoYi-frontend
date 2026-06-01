@@ -664,7 +664,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listPost } from '@/api/sentiment/post'
 import { listCommentByPost } from '@/api/sentiment/comment'
@@ -679,12 +680,23 @@ import {
 defineOptions({ name: 'SentimentAnalysis' })
 
 // ==================== Active Tab ====================
+const route = useRoute()
 const activeTab = ref('dashboard')
 
 function switchTab(tab) {
   activeTab.value = tab
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
+
+// 支持路由query参数切换tab
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && ['dashboard', 'social', 'news', 'crawlConfig', 'crawlLog'].includes(newTab)) {
+    activeTab.value = newTab
+  } else {
+    // 无query参数时默认显示仪表盘（如首页路由/index）
+    activeTab.value = 'dashboard'
+  }
+}, { immediate: true })
 
 // ==================== Post (Social Media) State ====================
 const postList = ref([])
@@ -1341,6 +1353,11 @@ function formatCrawlStatus(status) {
 
 // ==================== Initialization ====================
 onMounted(() => {
+  // 初始化时读取路由query参数
+  const tab = route.query.tab
+  if (tab && ['dashboard', 'social', 'news', 'crawlConfig', 'crawlLog'].includes(tab)) {
+    activeTab.value = tab
+  }
   loadPosts()
   loadNews()
   loadCrawlConfigs()
