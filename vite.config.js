@@ -43,9 +43,10 @@ export default defineConfig(({ mode, command }) => {
     // vite 相关配置
     server: {
       port: 3100,
-      host: true,
+      host: '0.0.0.0',
       open: false,
       allowedHosts: true,
+      hmr: { clientPort: 443 },
       proxy: {
         // https://cn.vitejs.dev/config/#server-proxy
         '/dev-api': {
