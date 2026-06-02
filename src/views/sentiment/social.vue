@@ -1,14 +1,19 @@
 <template>
   <div class="sentiment-page">
     <div class="page-section">
+      <!-- 平台筛选 - 独立行 -->
+      <div class="filter-bar">
+        <span class="filter-bar-label">平台：</span>
+        <div class="filter-pills">
+          <span class="filter-pill" :class="{ active: postFilterActive === 'all' }" @click="postFilterActive = 'all'">全部</span>
+          <span v-for="p in allPlatforms" :key="p.platform_name" class="filter-pill" :class="{ active: postFilterActive === p.platform_name }" @click="postFilterActive = p.platform_name">{{ p.icon }} {{ p.display_name || p.platform_name }}</span>
+        </div>
+      </div>
+      <!-- 搜索行 -->
       <div class="top-bar">
         <div class="search-box">
           <input v-model="postSearch" type="text" placeholder="搜索帖子标题、正文、作者..." />
           <span class="search-icon">🔍</span>
-        </div>
-        <div class="filter-pills">
-          <span class="filter-pill" :class="{ active: postFilterActive === 'all' }" @click="postFilterActive = 'all'">全部</span>
-          <span v-for="site in siteFilters" :key="site" class="filter-pill" :class="{ active: postFilterActive === site }" @click="postFilterActive = site">{{ site }}</span>
         </div>
         <button class="btn btn-outline btn-sm" @click="expandAllComments">📋 {{ allExpanded ? '折叠全部评论' : '展开全部评论' }}</button>
       </div>
@@ -91,7 +96,6 @@
     <div v-if="toastVisible" class="toast">{{ toastMessage }}</div>
   </div>
 </template>
-
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -99,6 +103,7 @@ import { listPost } from '@/api/sentiment/post'
 import { listCommentByPost } from '@/api/sentiment/comment'
 import { listImagesByPost } from '@/api/sentiment/image'
 import { parseKeywords, formatNumber, formatContent, getImageUrl } from './utils'
+import request from '@/utils/request'
 
 const postList = ref([])
 const postTotal = ref(0)
@@ -106,7 +111,7 @@ const postLoading = ref(false)
 const postSearch = ref('')
 const postFilterActive = ref('all')
 const postQuery = reactive({ pageNum: 1, pageSize: 20, searchValue: '' })
-const siteFilters = ref([])
+const allPlatforms = ref([])
 const expandedPosts = ref(new Set())
 const commentsMap = ref({})
 const commentLoadingMap = ref({})
@@ -124,17 +129,23 @@ const filteredPostList = computed(() => {
   if (postFilterActive.value !== 'all') list = list.filter(p => p.siteName === postFilterActive.value)
   return list
 })
-const filteredPostTotal = computed(() => filteredPostList.value.length)
 const allExpanded = computed(() => filteredPostList.value.length > 0 && filteredPostList.value.every(p => expandedPosts.value.has(p.postId)))
 
 function showToast(msg) { toastMessage.value = msg; toastVisible.value = true; if (toastTimeout) clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { toastVisible.value = false }, 2200) }
+
+async function loadPlatforms() {
+  try {
+    const res = await request({ url: '/system/sentiment/platform/listByCategory', method: 'get', params: { category: 'social' } })
+    allPlatforms.value = res.data || []
+  } catch (e) { console.error('加载平台列表失败:', e) }
+}
+
 async function loadPosts() {
   postLoading.value = true
   try {
     const params = { pageNum: postQuery.pageNum, pageSize: postQuery.pageSize }
     if (postSearch.value) params.searchValue = postSearch.value
     const res = await listPost(params); postList.value = res.rows || []; postTotal.value = res.total || 0
-    const siteSet = new Set(); postList.value.forEach(p => { if (p.siteName) siteSet.add(p.siteName) }); siteFilters.value = Array.from(siteSet)
   } catch (e) { console.error('加载帖子失败:', e); ElMessage.error('加载社交媒体数据失败') }
   finally { postLoading.value = false }
 }
@@ -165,10 +176,29 @@ async function viewPostDetail(row) {
 }
 function closeModal() { showModal.value = false; document.body.style.overflow = '' }
 
-onMounted(() => { loadPosts() })
+onMounted(() => { loadPlatforms(); loadPosts() })
 </script>
 
 
 <style>
 @import './common.css';
+
+/* 筛选栏独立行 */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 16px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  flex-wrap: wrap;
+}
+.filter-bar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
 </style>

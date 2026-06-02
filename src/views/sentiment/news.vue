@@ -1,18 +1,23 @@
 <template>
   <div class="sentiment-page">
     <div class="page-section">
-      <div class="top-bar">
-        <div class="search-box"><input v-model="newsSearch" type="text" placeholder="搜索报刊文章标题、关键词、内容..." /><span class="search-icon">🔍</span></div>
+      <!-- 平台筛选 - 独立行 -->
+      <div class="filter-bar">
+        <span class="filter-bar-label">来源：</span>
         <div class="filter-pills">
           <span class="filter-pill" :class="{ active: newsSelectedSources.size === 0 }" @click="handleNewsFilter('all')">全部来源</span>
-          <span v-for="src in newsSourceFilters" :key="src" class="filter-pill" :class="{ active: newsSelectedSources.has(src) }" @click="handleNewsFilter(src)">{{ src }}</span>
+          <span v-for="p in allPlatforms" :key="p.platform_name" class="filter-pill" :class="{ active: newsSelectedSources.has(p.platform_name) }" @click="handleNewsFilter(p.platform_name)">{{ p.icon }} {{ p.display_name || p.platform_name }}</span>
         </div>
+      </div>
+      <!-- 搜索行 -->
+      <div class="top-bar">
+        <div class="search-box"><input v-model="newsSearch" type="text" placeholder="搜索文章标题、关键词、内容..." /><span class="search-icon">🔍</span></div>
         <button class="btn btn-outline btn-sm" @click="exportPressCSV">📤 导出CSV</button>
       </div>
       <div class="card">
         <div class="card-header">
           <span class="card-title"><span class="dot dot-green"></span>新闻资讯文章列表</span>
-<span class="count-indicator">共 {{ newsTotal }} 条{{ newsSelectedSources.size > 0 ? ' (已筛选)' : '' }}</span>
+          <span class="count-indicator">共 {{ newsTotal }} 条{{ newsSelectedSources.size > 0 ? ' (已筛选)' : '' }}</span>
         </div>
         <div class="table-wrapper">
           <table v-if="filteredNewsList.length > 0">
@@ -63,31 +68,39 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listNews } from '@/api/sentiment/news'
 import { parseKeywords, formatContent } from './utils'
+import request from '@/utils/request'
+
 const newsList = ref([]); const newsTotal = ref(0); const newsLoading = ref(false)
 const newsSearch = ref(''); const newsSelectedSources = ref(new Set())
-const newsQuery = reactive({ pageNum: 1, pageSize: 20, searchValue: '' }); const newsSourceFilters = ref([])
+const newsQuery = reactive({ pageNum: 1, pageSize: 20, searchValue: '' })
+const allPlatforms = ref([])
 const showModal = ref(false); const currentNews = ref(null)
 const toastVisible = ref(false); const toastMessage = ref(''); let toastTimeout = null
+
 function getCoverUrl(img) {
   if (!img) return ''
-  // Local path: sentiment/images/xxx.jpg -> /system/sentiment/image/file/xxx.jpg
   if (img.includes('sentiment/images/')) {
     const filename = img.split('/').pop()
     return '/system/sentiment/image/file/' + filename
   }
-  // Already a full URL
   return img
 }
 
 const filteredNewsList = computed(() => newsSelectedSources.value.size === 0 ? newsList.value : newsList.value.filter(a => newsSelectedSources.value.has(a.source)))
-const filteredNewsTotal = computed(() => filteredNewsList.value.length)
 function showToast(msg) { toastMessage.value = msg; toastVisible.value = true; if (toastTimeout) clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { toastVisible.value = false }, 2200) }
 function handleNewsFilter(f) { if (f === 'all') { newsSelectedSources.value = new Set() } else { const s = new Set(newsSelectedSources.value); s.has(f) ? s.delete(f) : s.add(f); newsSelectedSources.value = s } }
+
+async function loadPlatforms() {
+  try {
+    const res = await request({ url: '/system/sentiment/platform/listByCategory', method: 'get', params: { category: 'news' } })
+    allPlatforms.value = res.data || []
+  } catch (e) { console.error('加载平台列表失败:', e) }
+}
+
 async function loadNews() {
   newsLoading.value = true
   try { const p = { pageNum: newsQuery.pageNum, pageSize: newsQuery.pageSize }; if (newsSearch.value) p.searchValue = newsSearch.value
     const res = await listNews(p); newsList.value = res.rows || []; newsTotal.value = res.total || 0
-    const ss = new Set(); newsList.value.forEach(a => { if (a.source) ss.add(a.source) }); newsSourceFilters.value = Array.from(ss)
   } catch (e) { ElMessage.error('加载报刊数据失败') } finally { newsLoading.value = false }
 }
 function viewNewsDetail(a) { currentNews.value = a; showModal.value = true; document.body.style.overflow = 'hidden' }
@@ -99,11 +112,30 @@ function exportPressCSV() {
   const a = document.createElement('a'); a.href = url; a.download = '报刊文章_' + new Date().toISOString().slice(0,10) + '.csv'; a.click()
   URL.revokeObjectURL(url); showToast('✅ 报刊数据已导出CSV！')
 }
-onMounted(() => { loadNews() })
+onMounted(() => { loadPlatforms(); loadNews() })
 </script>
 
 <style>
 @import './common.css';
+
+/* 筛选栏独立行 */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 16px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  flex-wrap: wrap;
+}
+.filter-bar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
 
 /* News cover image thumbnail */
 .news-cover-thumb {
