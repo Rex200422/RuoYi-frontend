@@ -15,7 +15,7 @@
       <div class="card">
         <div class="card-header">
           <span class="card-title"><span class="dot dot-blue"></span>社交媒体帖子列表</span>
-          <span class="count-indicator">共 {{ filteredPostTotal }} 条</span>
+          <span class="count-indicator">共 {{ postTotal }} 条</span>
         </div>
         <div class="table-wrapper">
           <table v-if="filteredPostList.length > 0">

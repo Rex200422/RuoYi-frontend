@@ -12,7 +12,7 @@
       <div class="card">
         <div class="card-header">
           <span class="card-title"><span class="dot dot-green"></span>新闻资讯文章列表</span>
-          <span class="count-indicator">共 {{ filteredNewsTotal }} 条{{ newsSelectedSources.size > 0 ? ' (已筛选)' : '' }}</span>
+<span class="count-indicator">共 {{ newsTotal }} 条{{ newsSelectedSources.size > 0 ? ' (已筛选)' : '' }}</span>
         </div>
         <div class="table-wrapper">
           <table v-if="filteredNewsList.length > 0">
@@ -21,7 +21,7 @@
               <tr v-for="article in filteredNewsList" :key="article.id" class="post-row" @click="viewNewsDetail(article)">
                 <td>
                   <div v-if="article.coverImage" class="news-cover-thumb" @click.stop>
-                    <img :src="article.coverImage" :alt="article.title" @error="e => e.target.style.display='none'" />
+                    <img :src="getCoverUrl(article.coverImage)" :alt="article.title" @error="e => e.target.style.display='none'" />
                   </div>
                   <span v-else class="no-cover-icon">📰</span>
                 </td>
@@ -45,7 +45,7 @@
         <button class="modal-close" @click="closeModal">✕</button>
         <div v-if="currentNews">
           <div v-if="currentNews.coverImage" class="modal-cover-image">
-            <img :src="currentNews.coverImage" :alt="currentNews.title" @error="e => e.target.parentElement.style.display='none'" />
+            <img :src="getCoverUrl(currentNews.coverImage)" :alt="currentNews.title" @error="e => e.target.parentElement.style.display='none'" />
           </div>
           <h2>📰 {{ currentNews.title }}</h2>
           <div class="meta-row"><span>📅 {{ currentNews.publishDate }}</span><span>🏢 {{ currentNews.source }}</span></div>
@@ -68,6 +68,17 @@ const newsSearch = ref(''); const newsSelectedSources = ref(new Set())
 const newsQuery = reactive({ pageNum: 1, pageSize: 20, searchValue: '' }); const newsSourceFilters = ref([])
 const showModal = ref(false); const currentNews = ref(null)
 const toastVisible = ref(false); const toastMessage = ref(''); let toastTimeout = null
+function getCoverUrl(img) {
+  if (!img) return ''
+  // Local path: sentiment/images/xxx.jpg -> /system/sentiment/image/file/xxx.jpg
+  if (img.includes('sentiment/images/')) {
+    const filename = img.split('/').pop()
+    return '/system/sentiment/image/file/' + filename
+  }
+  // Already a full URL
+  return img
+}
+
 const filteredNewsList = computed(() => newsSelectedSources.value.size === 0 ? newsList.value : newsList.value.filter(a => newsSelectedSources.value.has(a.source)))
 const filteredNewsTotal = computed(() => filteredNewsList.value.length)
 function showToast(msg) { toastMessage.value = msg; toastVisible.value = true; if (toastTimeout) clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { toastVisible.value = false }, 2200) }
