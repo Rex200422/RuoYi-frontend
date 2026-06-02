@@ -16,9 +16,15 @@
         </div>
         <div class="table-wrapper">
           <table v-if="filteredNewsList.length > 0">
-            <thead><tr><th>来源</th><th>标题</th><th>日期</th><th>关键词</th><th>操作</th></tr></thead>
+            <thead><tr><th>封面</th><th>来源</th><th>标题</th><th>日期</th><th>关键词</th><th>操作</th></tr></thead>
             <tbody>
               <tr v-for="article in filteredNewsList" :key="article.id" class="post-row" @click="viewNewsDetail(article)">
+                <td>
+                  <div v-if="article.coverImage" class="news-cover-thumb" @click.stop>
+                    <img :src="article.coverImage" :alt="article.title" @error="e => e.target.style.display='none'" />
+                  </div>
+                  <span v-else class="no-cover-icon">📰</span>
+                </td>
                 <td><span class="source-badge source-press">{{ article.source }}</span></td>
                 <td><span class="post-title-link" :title="article.title">{{ article.title }}</span></td>
                 <td style="font-size:12px;white-space:nowrap;">{{ article.publishDate }}</td>
@@ -38,6 +44,9 @@
       <div class="modal" @click.stop>
         <button class="modal-close" @click="closeModal">✕</button>
         <div v-if="currentNews">
+          <div v-if="currentNews.coverImage" class="modal-cover-image">
+            <img :src="currentNews.coverImage" :alt="currentNews.title" @error="e => e.target.parentElement.style.display='none'" />
+          </div>
           <h2>📰 {{ currentNews.title }}</h2>
           <div class="meta-row"><span>📅 {{ currentNews.publishDate }}</span><span>🏢 {{ currentNews.source }}</span></div>
           <div style="margin:10px 0;"><span v-for="kw in parseKeywords(currentNews.keywords)" :key="kw" class="keyword-tag">{{ kw }}</span></div>
@@ -82,7 +91,40 @@ function exportPressCSV() {
 onMounted(() => { loadNews() })
 </script>
 
-
 <style>
 @import './common.css';
+
+/* News cover image thumbnail */
+.news-cover-thumb {
+  width: 56px;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e8ecf1;
+  flex-shrink: 0;
+}
+.news-cover-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.no-cover-icon {
+  font-size: 20px;
+  opacity: 0.4;
+}
+/* Modal cover image */
+.modal-cover-image {
+  margin-bottom: 16px;
+  border-radius: 10px;
+  overflow: hidden;
+  max-height: 300px;
+}
+.modal-cover-image img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  display: block;
+  border-radius: 10px;
+}
 </style>
