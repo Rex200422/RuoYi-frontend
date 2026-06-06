@@ -13,7 +13,7 @@
         <div class="card-header"><span class="card-title"><span class="dot dot-green"></span>爬取任务日志</span><span class="count-indicator">共 {{ crawlLogTotal }} 条{{ crawlLogSelectedSites.size > 0 ? ' (已筛选)' : '' }}</span></div>
         <div class="table-wrapper">
           <table v-if="filteredCrawlLogs.length > 0">
-            <thead><tr><th>站点名称</th><th>关键词</th><th>状态</th><th>开始时间</th><th>结束时间</th><th>抓取数</th><th>保存数</th><th>错误信息</th></tr></thead>
+            <thead><tr><th>站点名称</th><th>关键词</th><th>状态</th><th>开始时间</th><th>结束时间</th><th>抓取数</th><th>新增数</th><th>更新数</th><th>错误信息</th></tr></thead>
             <tbody>
               <tr v-for="log in filteredCrawlLogs" :key="log.id">
                 <td><span class="site-badge">{{ log.siteName }}</span></td>
@@ -22,7 +22,8 @@
                 <td style="font-size:12px;white-space:nowrap;">{{ log.startTime || '—' }}</td>
                 <td style="font-size:12px;white-space:nowrap;">{{ log.endTime || '—' }}</td>
                 <td><strong>{{ log.itemsFound || 0 }}</strong></td>
-                <td><strong>{{ log.itemsSaved || 0 }}</strong></td>
+                <td><strong>{{ log.itemsNew || 0 }}</strong></td>
+                <td><strong>{{ log.itemsUpdated || 0 }}</strong></td>
                 <td>
                   <el-tooltip v-if="log.errorMsg" :content="log.errorMsg" placement="top" :show-after="300"><span class="error-hint">⚠️ 查看详情</span></el-tooltip>
                   <span v-else style="color:#aaa;font-size:12px;">—</span>
