@@ -14,12 +14,12 @@
         </div>
       </div>
 
-      <!-- 当前选中/最新简报完整内容 -->
+      <!-- 当前简报完整内容 -->
       <div class="card" v-if="activeSummary" style="margin-bottom:16px;">
         <div class="card-header">
           <span class="card-title">🤖 {{ activeSummary.title }}</span>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <span class="risk-badge" :class="'risk-' + activeSummary.riskLevel">风险: {{ formatRisk(activeSummary.riskLevel) }}</span>
+            <span class="risk-badge" :class="'risk-' + activeSummary.riskLevel">{{ formatRisk(activeSummary.riskLevel) }}</span>
             <span style="font-size:12px;color:#999;">{{ formatTime(activeSummary.createTime) }} · {{ activeSummary.newsCount }}新闻 + {{ activeSummary.socialCount }}社交 · {{ activeSummary.generateTime }}s生成 · {{ activeSummary.modelName }}</span>
           </div>
         </div>
@@ -49,7 +49,10 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in summaryList" :key="s.id" @click="activeSummary = s" :class="{ 'row-expanded': activeSummary && activeSummary.id === s.id }" style="cursor:pointer;">
+              <tr v-for="s in summaryList" :key="s.id"
+                  @click="activeSummary = s"
+                  :class="{ 'row-expanded': activeSummary && activeSummary.id === s.id }"
+                  style="cursor:pointer;">
                 <td style="white-space:nowrap;">{{ formatTime(s.createTime) }}</td>
                 <td><strong>{{ s.title }}</strong></td>
                 <td><span class="risk-badge" :class="'risk-' + s.riskLevel">{{ formatRisk(s.riskLevel) }}</span></td>
@@ -96,10 +99,6 @@ async function loadSummaries() {
     const res = await request({ url: '/system/sentiment/aiSummary/list', method: 'get', params })
     summaryList.value = res.rows || []
     total.value = res.total || 0
-    // 默认选中第一条（如果尚未选中）
-    if (summaryList.value.length > 0 && !activeSummary.value) {
-      activeSummary.value = summaryList.value[0]
-    }
   } catch (e) {
     ElMessage.error('加载简报列表失败')
   }
@@ -108,10 +107,10 @@ async function loadSummaries() {
 async function loadLatest() {
   try {
     const res = await request({ url: '/system/sentiment/aiSummary/latest', method: 'get' })
-    if (res.data) activeSummary.value = res.data
-  } catch (e) {
-    // latest 接口失败不提示，列表会兜底
-  }
+    if (res.data && !activeSummary.value) {
+      activeSummary.value = res.data
+    }
+  } catch (e) {}
 }
 
 function refresh() {
@@ -122,7 +121,7 @@ function refresh() {
 }
 
 function formatRisk(level) {
-  return { '低': '低风险', '中': '中风险', '高': '高风险' }[level] || level
+  return { '低': '🟢 低风险', '中': '🟡 中风险', '高': '🔴 高风险' }[level] || level
 }
 
 function formatTime(dt) {
@@ -132,14 +131,39 @@ function formatTime(dt) {
 
 function renderMarkdown(text) {
   if (!text) return ''
-  return text
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+  // 先将字面 \n 转为真实换行
+  let s = text.replace(/\\n/g, '\n')
+  // 压缩连续空行为单个换行
+  s = s.replace(/\n{3,}/g, '\n\n')
+
+  let html = s
+    // 标题
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    // 粗体
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 无序列表
     .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-    .replace(/\n/g, '<br>')
+
+  // 合并连续 <li> 到 <ul>
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
+
+  // 段落处理：非标题、非列表、非空行 → 包装 <p>
+  const lines = html.split('\n')
+  const result = []
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) {
+      result.push('')
+    } else if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<li')) {
+      result.push(line)
+    } else {
+      result.push('<p>' + trimmed + '</p>')
+    }
+  }
+
+  // 再次压缩空行
+  return result.join('\n').replace(/\n{3,}/g, '\n\n')
 }
 
 watch(riskFilter, () => {
@@ -159,10 +183,11 @@ onMounted(() => {
 
 .risk-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .risk-low,
@@ -186,20 +211,51 @@ onMounted(() => {
 .summary-content {
   line-height: 1.8;
   font-size: 14px;
+  padding: 16px 20px;
 }
 
-.summary-content h1,
-.summary-content h2,
 .summary-content h3 {
-  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 18px;
   margin-bottom: 8px;
+  color: var(--text, #2c3e50);
+  border-bottom: 1px solid var(--border, #e8ecf1);
+  padding-bottom: 6px;
+}
+
+.summary-content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  color: #34495e;
+}
+
+.summary-content p {
+  margin: 6px 0;
+}
+
+.summary-content strong {
+  color: #2c3e50;
 }
 
 .summary-content ul {
-  padding-left: 20px;
+  padding-left: 22px;
+  margin: 6px 0;
 }
 
 .summary-content li {
   margin: 4px 0;
+  line-height: 1.6;
+}
+
+.summary-content li::marker {
+  color: var(--primary, #4f6ef7);
+}
+
+/* 表格行选中高亮 */
+tr.row-expanded {
+  background: var(--primary-light, #eef1fe) !important;
 }
 </style>
