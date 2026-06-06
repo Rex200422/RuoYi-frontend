@@ -11,6 +11,9 @@
             <span class="filter-pill" :class="{ active: riskFilter === '高' }" @click="riskFilter = '高'">🔴 高风险</span>
           </div>
           <button class="btn btn-outline btn-sm" @click="refresh">🔄 刷新</button>
+        <button class="btn btn-primary btn-sm" @click="generateNow" :disabled="generating">
+          {{ generating ? '⏳ 生成中...' : '🤖 立即生成' }}
+        </button>
         </div>
       </div>
 
@@ -90,7 +93,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
@@ -100,6 +103,8 @@ const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
 const riskFilter = ref('')
+const generating = ref(false)
+let pollTimer = null
 
 async function loadSummaries() {
   try {
@@ -127,6 +132,43 @@ function refresh() {
   pageNum.value = 1
   loadLatest()
   loadSummaries()
+}
+
+async function generateNow() {
+  if (generating.value) return
+  try {
+    const res = await request({ url: '/system/sentiment/aiSummary/generate', method: 'post' })
+    if (res.code === 200) {
+      ElMessage.success(res.msg || '简报已提交生成，预计1-3分钟')
+      generating.value = true
+      startPolling()
+    } else {
+      ElMessage.warning(res.msg || '提交失败')
+    }
+  } catch (e) {
+    ElMessage.error('提交失败')
+  }
+}
+
+async function checkGenerating() {
+  try {
+    const res = await request({ url: '/system/sentiment/aiSummary/generating', method: 'get' })
+    if (res.data === false && generating.value) {
+      generating.value = false
+      stopPolling()
+      ElMessage.success('简报生成完成')
+      refresh()
+    }
+  } catch (e) {}
+}
+
+function startPolling() {
+  stopPolling()
+  pollTimer = setInterval(checkGenerating, 5000)
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
 }
 
 function formatRisk(level) {
