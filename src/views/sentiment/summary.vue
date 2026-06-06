@@ -15,7 +15,7 @@
       </div>
 
       <!-- 当前简报完整内容 -->
-      <div class="card" v-if="activeSummary" style="margin-bottom:16px;">
+      <div class="card" v-if="activeSummary && activeSummary.summaryType !== 'skipped'" style="margin-bottom:16px;">
         <div class="card-header">
           <span class="card-title">🤖 {{ activeSummary.title }}</span>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -26,7 +26,13 @@
         <div class="summary-content" v-html="renderMarkdown(activeSummary.content)"></div>
       </div>
 
-      <div v-else class="card" style="margin-bottom:16px;text-align:center;padding:40px;color:#aaa;">
+      <!-- 跳过状态提示 -->
+      <div v-if="activeSummary && activeSummary.summaryType === 'skipped'" class="card" style="text-align:center;padding:30px;color:#888;">
+        ⏭️ {{ activeSummary.title }}
+        <p style="margin-top:8px;font-size:12px;">{{ formatTime(activeSummary.createTime) }}</p>
+      </div>
+
+      <div v-if="!activeSummary" class="card" style="margin-bottom:16px;text-align:center;padding:40px;color:#aaa;">
         暂无简报数据，等待自动生成...
       </div>
 
@@ -51,10 +57,13 @@
             <tbody>
               <tr v-for="s in summaryList" :key="s.id"
                   @click="activeSummary = s"
-                  :class="{ 'row-expanded': activeSummary && activeSummary.id === s.id }"
+                  :class="{ 'row-expanded': activeSummary && activeSummary.id === s.id, 'row-skipped': s.summaryType === 'skipped' }"
                   style="cursor:pointer;">
                 <td style="white-space:nowrap;">{{ formatTime(s.createTime) }}</td>
-                <td><strong>{{ s.title }}</strong></td>
+                <td>
+                  <span v-if="s.summaryType === 'skipped'" style="color:#aaa;font-style:italic;">⏭️ 跳过</span>
+                  <strong v-else>{{ s.title }}</strong>
+                </td>
                 <td><span class="risk-badge" :class="'risk-' + s.riskLevel">{{ formatRisk(s.riskLevel) }}</span></td>
                 <td>{{ s.newsCount }}新闻 + {{ s.socialCount }}社交</td>
                 <td style="font-size:12px;">{{ s.modelName }}</td>
@@ -206,6 +215,14 @@ onMounted(() => {
 .risk-高 {
   background: #ffebee;
   color: #c62828;
+}
+
+.row-skipped {
+  opacity: 0.5;
+  background: #f9f9f9;
+}
+.row-skipped td {
+  color: #999;
 }
 
 .summary-content {
