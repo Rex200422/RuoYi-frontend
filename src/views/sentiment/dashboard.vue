@@ -1,41 +1,6 @@
 <template>
   <div class="sentiment-page">
     <div class="page-section">
-      <!-- AI 舆情简报区域 -->
-      <div class="card" v-if="latestSummary">
-        <div class="card-header">
-          <span class="card-title">🤖 AI 舆情简报</span>
-          <div>
-            <span class="risk-badge" :class="'risk-' + latestSummary.riskLevel">
-              风险评级: {{ formatRisk(latestSummary.riskLevel) }}
-            </span>
-            <span style="font-size:12px;color:#999;margin-left:8px;">
-              {{ formatTime(latestSummary.createTime) }} · {{ latestSummary.newsCount }}条新闻 + {{ latestSummary.socialCount }}条社交 · {{ latestSummary.generateTime }}s生成
-            </span>
-          </div>
-        </div>
-        <div class="summary-content" v-html="renderMarkdown(latestSummary.content)"></div>
-      </div>
-
-      <!-- 历史简报列表 -->
-      <div class="card" v-if="summaryList.length > 0">
-        <div class="card-header">
-          <span class="card-title">📋 历史简报</span>
-        </div>
-        <div class="table-wrapper">
-          <table>
-            <thead><tr><th>时间</th><th>标题</th><th>风险</th><th>数据量</th></tr></thead>
-            <tbody>
-              <tr v-for="s in summaryList" :key="s.id" @click="showSummaryDetail(s)" style="cursor:pointer;">
-                <td>{{ formatTime(s.createTime) }}</td>
-                <td>{{ s.title }}</td>
-                <td><span class="risk-badge" :class="'risk-' + s.riskLevel">{{ formatRisk(s.riskLevel) }}</span></td>
-                <td>{{ s.newsCount }}新闻 + {{ s.socialCount }}社交</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       <div class="top-bar">
         <div class="search-box">
@@ -111,7 +76,6 @@ import { useRouter } from 'vue-router'
 import { listPost } from '@/api/sentiment/post'
 import { listNews } from '@/api/sentiment/news'
 import { parseKeywords, formatNumber } from './utils'
-import request from '@/utils/request'
 
 const router = useRouter()
 const postTotal = ref(0)
@@ -159,43 +123,6 @@ const tagCloudData = computed(() => {
 })
 function tagColorClass(i) { return ['tag-c1','tag-c2','tag-c3','tag-c4','tag-c5'][i % 5] }
 
-const latestSummary = ref(null)
-const summaryList = ref([])
-
-function formatRisk(level) {
-  return { low: '低风险', medium: '中风险', high: '高风险' }[level] || level
-}
-
-function formatTime(dt) {
-  if (!dt) return ''
-  return new Date(dt).toLocaleString('zh-CN')
-}
-
-function renderMarkdown(text) {
-  if (!text) return ''
-  return text
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>')
-}
-
-function showSummaryDetail(s) {
-  latestSummary.value = s
-}
-
-async function loadSummaries() {
-  try {
-    const res = await request({ url: '/system/sentiment/aiSummary/latest', method: 'get' })
-    latestSummary.value = res.data
-  } catch(e) {}
-  try {
-    const res = await request({ url: '/system/sentiment/aiSummary/list', method: 'get', params: { pageNum: 1, pageSize: 10 } })
-    summaryList.value = res.rows || []
-  } catch(e) {}
-}
-
 function refreshData() { showToast('🔄 数据已刷新'); loadData() }
 function exportReport() {
   let r = '舆情监控日报\n生成时间：' + new Date().toLocaleString() + '\n' + '='.repeat(50) + '\n\n'
@@ -215,43 +142,9 @@ async function loadData() {
     newsList.value = nr.rows || []; newsTotal.value = nr.total || 0
   } catch (e) { console.error('加载仪表盘数据失败:', e) }
 }
-onMounted(() => { loadData(); loadSummaries() })
+onMounted(() => { loadData() })
 </script>
-
 
 <style>
 @import './common.css';
-
-.risk-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.risk-low { background: #e8f5e9; color: #2e7d32; }
-.risk-medium { background: #fff3e0; color: #e65100; }
-.risk-high { background: #ffebee; color: #c62828; }
-
-.summary-content {
-  line-height: 1.8;
-  font-size: 14px;
-}
-.summary-content h1, .summary-content h2, .summary-content h3 {
-  margin-top: 12px;
-  margin-bottom: 8px;
-}
-.summary-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 8px 0;
-}
-.summary-content table th, .summary-content table td {
-  border: 1px solid #e8ecf1;
-  padding: 6px 10px;
-  text-align: left;
-  font-size: 13px;
-}
-.summary-content table th { background: #f5f7fa; font-weight: 600; }
-.summary-content ul, .summary-content ol { padding-left: 20px; }
 </style>
