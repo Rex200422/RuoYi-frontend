@@ -46,7 +46,7 @@ export default defineConfig(({ mode, command }) => {
       host: '0.0.0.0',
       open: false,
       allowedHosts: true,
-      hmr: { host: 'auto', port: 'auto' },
+      hmr: { clientPort: 443 },
       proxy: {
         // https://cn.vitejs.dev/config/#server-proxy
         '/dev-api': {
