@@ -25,7 +25,7 @@ router.beforeEach(async (to, from) => {
     const isLock = useLockStore().isLock
     if (to.path === '/login') {
       NProgress.done()
-      return { path: '/' }
+      return { path: '/index' }
     }
     if (isWhiteList(to.path)) {
       return true
@@ -36,7 +36,7 @@ router.beforeEach(async (to, from) => {
     }
     if (!isLock && to.path === '/lock') {
       NProgress.done()
-      return { path: '/' }
+      return { path: '/index' }
     }
     if (useUserStore().roles.length === 0) {
       isRelogin.show = true
@@ -56,7 +56,7 @@ router.beforeEach(async (to, from) => {
       } catch (err) {
         await useUserStore().logOut()
         ElMessage.error(err)
-        return { path: '/' }
+        return { path: '/index' }
       }
     }
     return true

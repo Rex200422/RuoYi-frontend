@@ -65,6 +65,18 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/ai-summary',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/sentiment/summary'),
+        name: 'AiSummary',
+        meta: { title: '舆情简报', icon: 'log' }
+      }
+    ]
+  },
+  {
     path: '/lock',
     component: () => import('@/views/lock'),
     hidden: true,
