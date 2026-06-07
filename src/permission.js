@@ -19,13 +19,14 @@ const isWhiteList = (path) => {
 }
 
 router.beforeEach(async (to, from) => {
+  console.log('[Guard] navigating to:', to.path, '| from:', from.path, '| matched:', to.matched.length)
   NProgress.start()
   if (getToken()) {
     to.meta.title && useSettingsStore().setTitle(to.meta.title)
     const isLock = useLockStore().isLock
     if (to.path === '/login') {
       NProgress.done()
-      return { path: '/' }
+      return { path: '/index' }
     }
     if (isWhiteList(to.path)) {
       return true
@@ -36,7 +37,7 @@ router.beforeEach(async (to, from) => {
     }
     if (!isLock && to.path === '/lock') {
       NProgress.done()
-      return { path: '/' }
+      return { path: '/index' }
     }
     if (useUserStore().roles.length === 0) {
       isRelogin.show = true
@@ -51,12 +52,17 @@ router.beforeEach(async (to, from) => {
             router.addRoute(route)
           }
         })
+        // DEBUG: 打印所有已注册路由
+        console.log('[Guard] All routes after addRoute:')
+        router.getRoutes().forEach(r => {
+          console.log('  ', r.path, '| name:', r.name)
+        })
         // 重新导航到目标路由，确保动态路由已注册
         return { ...to, replace: true }
       } catch (err) {
         await useUserStore().logOut()
         ElMessage.error(err)
-        return { path: '/' }
+        return { path: '/index' }
       }
     }
     return true
