@@ -19,7 +19,6 @@ const isWhiteList = (path) => {
 }
 
 router.beforeEach(async (to, from) => {
-  console.log('[Guard] navigating to:', to.path, '| from:', from.path, '| matched:', to.matched.length)
   NProgress.start()
   if (getToken()) {
     to.meta.title && useSettingsStore().setTitle(to.meta.title)
@@ -51,11 +50,6 @@ router.beforeEach(async (to, from) => {
           if (!isHttp(route.path)) {
             router.addRoute(route)
           }
-        })
-        // DEBUG: 打印所有已注册路由
-        console.log('[Guard] All routes after addRoute:')
-        router.getRoutes().forEach(r => {
-          console.log('  ', r.path, '| name:', r.name)
         })
         // 重新导航到目标路由，确保动态路由已注册
         return { ...to, replace: true }

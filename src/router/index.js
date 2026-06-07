@@ -189,9 +189,5 @@ const router = createRouter({
   },
 })
 
-// DEBUG: 打印所有注册的路由
-router.getRoutes().forEach(r => {
-  console.log('[Router] Registered:', r.path, '| name:', r.name, '| component:', r.components?.default?.name || r.components?.default?.__file || 'unknown')
-})
 
 export default router
