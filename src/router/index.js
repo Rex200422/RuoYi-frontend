@@ -48,16 +48,22 @@ export const constantRoutes = [
     hidden: true
   },
   {
+    path: "/:pathMatch(.*)*",
+    component: () => import('@/views/error/404'),
+    hidden: true
+  },
+  {
     path: '/401',
     component: () => import('@/views/error/401'),
     hidden: true
   },
   {
-    path: '/',
+    path: '',
     component: Layout,
+    redirect: '/index',
     children: [
       {
-        path: 'index',
+        path: '/index',
         component: () => import('@/views/sentiment/dashboard'),
         name: 'Index',
         meta: { title: '首页', icon: 'dashboard', affix: true }
