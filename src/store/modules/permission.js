@@ -44,8 +44,6 @@ const usePermissionStore = defineStore(
             const defaultRoutes = filterAsyncRouter(defaultData)
             const asyncRoutes = filterDynamicRoutes(dynamicRoutes)
             asyncRoutes.forEach(route => { router.addRoute(route) })
-            // Add catch-all 404 route LAST, after all dynamic routes
-            router.addRoute({ path: '/:pathMatch(.*)*', component: () => import('@/views/error/404'), hidden: true })
             this.setRoutes(rewriteRoutes)
             this.setSidebarRouters(constantRoutes.concat(sidebarRoutes))
             this.setDefaultRoutes(sidebarRoutes)
