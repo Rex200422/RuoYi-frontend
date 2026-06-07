@@ -47,20 +47,17 @@ export const constantRoutes = [
     component: () => import('@/views/register'),
     hidden: true
   },
-  // NOTE: catch-all 404 route moved to permission.js to avoid blocking /index
-  // Vue Router 4 addRoute() cannot override routes already in constantRoutes
   {
     path: '/401',
     component: () => import('@/views/error/401'),
     hidden: true
   },
   {
-    path: '',
+    path: '/index',
     component: Layout,
-    redirect: '/index',
     children: [
       {
-        path: '/index',
+        path: '',
         component: () => import('@/views/sentiment/dashboard'),
         name: 'Index',
         meta: { title: '首页', icon: 'dashboard', affix: true }
@@ -86,6 +83,11 @@ export const constantRoutes = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    component: () => import('@/views/error/404'),
+    hidden: true
   }
 ]
 
