@@ -47,11 +47,8 @@ export const constantRoutes = [
     component: () => import('@/views/register'),
     hidden: true
   },
-  {
-    path: "/:pathMatch(.*)*",
-    component: () => import('@/views/error/404'),
-    hidden: true
-  },
+  // NOTE: catch-all 404 route moved to permission.js to avoid blocking /index
+  // Vue Router 4 addRoute() cannot override routes already in constantRoutes
   {
     path: '/401',
     component: () => import('@/views/error/401'),
