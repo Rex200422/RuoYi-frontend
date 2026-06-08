@@ -19,120 +19,60 @@
         </div>
       </div>
 
-      <!-- 当前简报 (V5 结构化 JSON) -->
+      <!-- 当前简报 (简洁结构) -->
       <template v-if="activeSummary && activeSummary.summaryType !== 'skipped'">
-        <!-- 标题 & 元信息 -->
+        <!-- 标题 + 风险评级（一行） -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-header">
             <span class="card-title">🤖 {{ jsonData.title || activeSummary.title }}</span>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-              <span class="risk-badge" :class="'risk-' + activeSummary.riskLevel">{{ formatRisk(activeSummary.riskLevel) }}</span>
-              <span style="font-size:12px;color:#999;">{{ formatTime(activeSummary.createTime) }} · {{ activeSummary.newsCount }}新闻 + {{ activeSummary.socialCount }}社交 · {{ activeSummary.generateTime }}s生成 · {{ activeSummary.modelName }}</span>
-            </div>
+            <span class="risk-badge" :class="'risk-' + activeSummary.riskLevel">{{ formatRisk(activeSummary.riskLevel) }}</span>
           </div>
-          <!-- 核心摘要 -->
-          <div class="summary-text" v-if="jsonData.summary">
+        </div>
+
+        <!-- 核心摘要 -->
+        <div class="card" style="margin-bottom:16px;" v-if="jsonData.summary">
+          <div class="summary-text">
             <p>{{ jsonData.summary }}</p>
           </div>
-          <div class="summary-content" v-else v-html="renderMarkdown(activeSummary.content)"></div>
+        </div>
+        <div class="card" style="margin-bottom:16px;" v-else-if="activeSummary.content">
+          <div class="summary-content" v-html="renderMarkdown(activeSummary.content)"></div>
         </div>
 
         <!-- 图表区域 -->
         <div class="charts-row" v-if="hasChartData">
-          <!-- 分类饼图 -->
-          <div class="card chart-card" v-if="jsonData.categories && jsonData.categories.length > 0">
+          <!-- 分类分布饼图 -->
+          <div class="card chart-card">
             <div class="card-header">
               <span class="card-title">📊 分类分布</span>
             </div>
-            <div ref="pieChart" style="width:100%;height:320px;"></div>
+            <div ref="pieChart" style="width:100%;height:360px;"></div>
           </div>
 
-          <!-- 趋势折线图 -->
-          <div class="card chart-card" v-if="jsonData.trends && jsonData.trends.category_trends && Object.keys(jsonData.trends.category_trends).length > 0">
-            <div class="card-header">
-              <span class="card-title">📈 热度趋势</span>
-            </div>
-            <div ref="lineChart" style="width:100%;height:320px;"></div>
-          </div>
-        </div>
-
-        <!-- 风险趋势 -->
-        <div class="card" style="margin-bottom:16px;" v-if="jsonData.trends && jsonData.trends.risk_trend && jsonData.trends.risk_trend.length > 0">
-          <div class="card-header">
-            <span class="card-title">⚠️ 风险趋势</span>
-          </div>
-          <div ref="riskChart" style="width:100%;height:200px;"></div>
-        </div>
-
-        <!-- 关键词 & 统计 -->
-        <div class="charts-row" v-if="jsonData.stats">
-          <!-- 关键词 TOP -->
-          <div class="card chart-card" v-if="jsonData.stats.keywords && jsonData.stats.keywords.length > 0">
+          <!-- 热门关键词柱状图 -->
+          <div class="card chart-card">
             <div class="card-header">
               <span class="card-title">🔥 热门关键词</span>
             </div>
-            <div ref="barChart" style="width:100%;height:320px;"></div>
+            <div ref="barChart" style="width:100%;height:360px;"></div>
           </div>
+        </div>
 
-          <!-- 统计卡片 -->
+        <div class="charts-row" v-if="hasChartData">
+          <!-- 风险等级趋势折线图 -->
           <div class="card chart-card">
             <div class="card-header">
-              <span class="card-title">📋 数据概览</span>
+              <span class="card-title">⚠️ 风险等级趋势</span>
             </div>
-            <div class="stats-grid" style="margin-bottom:0;">
-              <div class="stat-card">
-                <div class="stat-icon icon-bg-blue">📰</div>
-                <div class="stat-value">{{ jsonData.stats.total_news || 0 }}</div>
-                <div class="stat-label">新闻文章</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-icon icon-bg-orange">💬</div>
-                <div class="stat-value">{{ jsonData.stats.total_posts || 0 }}</div>
-                <div class="stat-label">社交帖子</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-icon icon-bg-red">🏷️</div>
-                <div class="stat-value">{{ (jsonData.stats.keywords || []).length }}</div>
-                <div class="stat-label">关键词数</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-icon icon-bg-green">📊</div>
-                <div class="stat-value">{{ (jsonData.categories || []).length }}</div>
-                <div class="stat-label">分类数</div>
-              </div>
-            </div>
+            <div ref="riskChart" style="width:100%;height:360px;"></div>
           </div>
-        </div>
 
-        <!-- 分类详情 -->
-        <div class="card" style="margin-bottom:16px;" v-if="jsonData.categories && jsonData.categories.length > 0">
-          <div class="card-header">
-            <span class="card-title">📂 分类详情</span>
-          </div>
-          <div class="category-list">
-            <div class="category-item" v-for="cat in jsonData.categories" :key="cat.name">
-              <div class="category-header">
-                <span class="category-name">{{ getCategoryEmoji(cat.name) }} {{ cat.name }}</span>
-                <span class="category-count">{{ cat.count }}条</span>
-                <span class="category-trend" :class="'trend-' + cat.trend">{{ cat.trend }}</span>
-              </div>
-              <div class="category-events" v-if="cat.events && cat.events.length > 0">
-                <div class="event-item" v-for="(evt, idx) in cat.events" :key="idx">• {{ evt }}</div>
-              </div>
+          <!-- 各分类舆情数变化折线图 -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <span class="card-title">📈 分类舆情趋势</span>
             </div>
-          </div>
-        </div>
-
-        <!-- 关注建议 -->
-        <div class="card" style="margin-bottom:16px;" v-if="jsonData.suggestions && jsonData.suggestions.length > 0">
-          <div class="card-header">
-            <span class="card-title">💡 关注建议</span>
-          </div>
-          <div class="suggestion-list">
-            <div class="suggestion-item" v-for="(s, idx) in jsonData.suggestions" :key="idx">
-              <span class="suggestion-num">{{ idx + 1 }}</span>
-              <span>{{ s }}</span>
-            </div>
+            <div ref="lineChart" style="width:100%;height:360px;"></div>
           </div>
         </div>
       </template>
@@ -231,13 +171,11 @@ let riskInstance = null
 const jsonData = ref({})
 
 const hasChartData = computed(() => {
-  return (jsonData.value.categories && jsonData.value.categories.length > 0) ||
-         (jsonData.value.trends && jsonData.value.category_trends && Object.keys(jsonData.value.category_trends).length > 0)
+  return !!activeSummary.value && activeSummary.value.summaryType !== 'skipped'
 })
 
 function parseJsonContent(content) {
   if (!content) return {}
-  // Try to parse as JSON
   try {
     const parsed = JSON.parse(content)
     if (parsed && typeof parsed === 'object' && parsed.title) {
@@ -257,14 +195,6 @@ function getDisplayTitle(s) {
     } catch (e) {}
   }
   return s.title
-}
-
-function getCategoryEmoji(name) {
-  const emojis = {
-    '军事': '🎯', '贸易': '📦', '外交': '🤝', '科技': '🔬',
-    '人权': '✊', '社会': '🏛️', '经济': '💰', '政治': '🗳️', '其他': '📌'
-  }
-  return emojis[name] || '📌'
 }
 
 async function loadSummaries() {
@@ -291,7 +221,6 @@ async function loadLatest() {
 function selectSummary(s) {
   activeSummary.value = s
   jsonData.value = parseJsonContent(s.content)
-  // Render charts after DOM update
   nextTick(() => {
     renderAllCharts()
   })
@@ -353,7 +282,7 @@ function formatTime(dt) {
 
 function renderMarkdown(text) {
   if (!text) return ''
-  let s = text.replace(/\\\\n/g, '\n')
+  let s = text.replace(/\\\\\n/g, '\n')
   s = s.replace(/\n{3,}/g, '\n\n')
   let html = s
     .replace(/^### (.+)$/gm, '<h4>$1</h4>')
@@ -382,20 +311,13 @@ const COLORS = ['#4f6ef7', '#f39c12', '#e74c3c', '#27ae60', '#9b59b6', '#1abc9c'
 
 function renderAllCharts() {
   destroyCharts()
-  if (!jsonData.value || !activeSummary.value) return
+  if (!activeSummary.value) return
 
-  if (jsonData.value.categories && jsonData.value.categories.length > 0) {
-    renderPieChart()
-  }
-  if (jsonData.value.trends && jsonData.value.trends.category_trends && Object.keys(jsonData.value.trends.category_trends).length > 0) {
-    renderLineChart()
-  }
-  if (jsonData.value.stats && jsonData.value.stats.keywords && jsonData.value.stats.keywords.length > 0) {
-    renderBarChart()
-  }
-  if (jsonData.value.trends && jsonData.value.trends.risk_trend && jsonData.value.trends.risk_trend.length > 0) {
-    renderRiskChart()
-  }
+  // Always render all four charts with empty state fallback
+  renderPieChart()
+  renderBarChart()
+  renderRiskChart()
+  renderLineChart()
 }
 
 function destroyCharts() {
@@ -408,10 +330,14 @@ function destroyCharts() {
 function renderPieChart() {
   if (!pieChart.value) return
   pieInstance = echarts.init(pieChart.value)
-  const data = jsonData.value.categories.map(c => ({
-    name: c.name,
-    value: c.count
-  }))
+  const categories = jsonData.value.categories || []
+  if (categories.length === 0) {
+    pieInstance.setOption({
+      title: { text: '暂无分类数据', left: 'center', top: 'center', textStyle: { color: '#aaa', fontSize: 14, fontWeight: 'normal' } }
+    })
+    return
+  }
+  const data = categories.map(c => ({ name: c.name, value: c.count }))
   pieInstance.setOption({
     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: { type: 'scroll', bottom: 0, textStyle: { fontSize: 11 } },
@@ -431,48 +357,16 @@ function renderPieChart() {
   })
 }
 
-function renderLineChart() {
-  if (!lineChart.value) return
-  lineInstance = echarts.init(lineChart.value)
-  const trends = jsonData.value.trends
-  const timeLabels = trends.time_labels || []
-  const series = []
-  let idx = 0
-  for (const [name, values] of Object.entries(trends.category_trends)) {
-    series.push({
-      name: name,
-      type: 'line',
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 6,
-      data: values,
-      lineStyle: { width: 2 },
-      itemStyle: { color: COLORS[idx % COLORS.length] }
-    })
-    idx++
-  }
-  lineInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: { type: 'scroll', bottom: 0, textStyle: { fontSize: 11 } },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '5%', containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: timeLabels,
-      axisLabel: { fontSize: 11 }
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { fontSize: 11 },
-      minInterval: 1
-    },
-    series: series
-  })
-}
-
 function renderBarChart() {
   if (!barChart.value) return
   barInstance = echarts.init(barChart.value)
-  const keywords = jsonData.value.stats.keywords.slice(0, 12)
+  const keywords = (jsonData.value.stats && jsonData.value.stats.keywords) ? jsonData.value.stats.keywords.slice(0, 12) : []
+  if (keywords.length === 0) {
+    barInstance.setOption({
+      title: { text: '暂无关键词数据', left: 'center', top: 'center', textStyle: { color: '#aaa', fontSize: 14, fontWeight: 'normal' } }
+    })
+    return
+  }
   barInstance.setOption({
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '5%', containLabel: true },
@@ -500,7 +394,14 @@ function renderBarChart() {
 function renderRiskChart() {
   if (!riskChart.value) return
   riskInstance = echarts.init(riskChart.value)
-  const riskTrend = jsonData.value.trends.risk_trend
+  const trends = jsonData.value.trends || {}
+  const riskTrend = trends.risk_trend || []
+  if (riskTrend.length === 0) {
+    riskInstance.setOption({
+      title: { text: '暂无风险趋势数据', left: 'center', top: 'center', textStyle: { color: '#aaa', fontSize: 14, fontWeight: 'normal' } }
+    })
+    return
+  }
   const riskMap = { '低': 1, '中': 2, '高': 3 }
   const labels = riskTrend.map((_, i) => `简报${i + 1}`)
   riskInstance.setOption({
@@ -561,6 +462,51 @@ function renderRiskChart() {
         }))
       }
     }]
+  })
+}
+
+function renderLineChart() {
+  if (!lineChart.value) return
+  lineInstance = echarts.init(lineChart.value)
+  const trends = jsonData.value.trends || {}
+  const categoryTrends = trends.category_trends || {}
+  if (Object.keys(categoryTrends).length === 0) {
+    lineInstance.setOption({
+      title: { text: '暂无分类趋势数据', left: 'center', top: 'center', textStyle: { color: '#aaa', fontSize: 14, fontWeight: 'normal' } }
+    })
+    return
+  }
+  const timeLabels = trends.time_labels || []
+  const series = []
+  let idx = 0
+  for (const [name, values] of Object.entries(categoryTrends)) {
+    series.push({
+      name: name,
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      data: values,
+      lineStyle: { width: 2 },
+      itemStyle: { color: COLORS[idx % COLORS.length] }
+    })
+    idx++
+  }
+  lineInstance.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { type: 'scroll', bottom: 0, textStyle: { fontSize: 11 } },
+    grid: { left: '3%', right: '4%', bottom: '15%', top: '5%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: timeLabels,
+      axisLabel: { fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { fontSize: 11 },
+      minInterval: 1
+    },
+    series: series
   })
 }
 
@@ -706,91 +652,7 @@ onUnmounted(() => {
 }
 
 .chart-card {
-  min-height: 360px;
-}
-
-/* Category list */
-.category-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.category-item {
-  padding: 12px 16px;
-  background: #f8f9fb;
-  border-radius: 8px;
-  border-left: 3px solid var(--primary, #4f6ef7);
-}
-
-.category-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.category-name {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text, #2c3e50);
-}
-
-.category-count {
-  font-size: 12px;
-  color: #999;
-}
-
-.category-trend {
-  font-size: 11px;
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-weight: 600;
-}
-
-.trend-上升 { background: #ffebee; color: #c62828; }
-.trend-下降 { background: #e8f5e9; color: #2e7d32; }
-.trend-持平 { background: #f5f5f5; color: #999; }
-
-.category-events {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #666;
-}
-
-.event-item {
-  padding: 2px 0;
-}
-
-/* Suggestion list */
-.suggestion-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.suggestion-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 12px;
-  background: #f8f9fb;
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.suggestion-num {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  background: var(--primary, #4f6ef7);
-  color: #fff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
+  min-height: 400px;
 }
 
 /* Table row selected highlight */
