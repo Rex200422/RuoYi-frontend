@@ -25,7 +25,10 @@
         <div class="card" style="margin-bottom:16px;">
           <div class="card-header">
             <span class="card-title">🤖 {{ jsonData.title || activeSummary.title }}</span>
-            <span class="risk-badge" :class="'risk-' + activeSummary.riskLevel">{{ formatRisk(activeSummary.riskLevel) }}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="risk-badge" :class="'risk-' + activeSummary.riskLevel">{{ formatRisk(activeSummary.riskLevel) }}</span>
+              <span v-if="jsonData.risk_reason" style="font-size:12px;color:#666;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" :title="jsonData.risk_reason">{{ jsonData.risk_reason }}</span>
+            </div>
           </div>
         </div>
 
