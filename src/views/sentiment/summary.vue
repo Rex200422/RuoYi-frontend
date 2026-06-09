@@ -38,6 +38,17 @@
             <p>{{ jsonData.summary }}</p>
           </div>
         </div>
+
+        <!-- 与上次简报的变化 -->
+        <div class="card" style="margin-bottom:16px;" v-if="jsonData.change">
+          <div class="card-header">
+            <span class="card-title">📈 与上次简报的变化</span>
+          </div>
+          <div class="change-text">
+            <p>{{ jsonData.change }}</p>
+          </div>
+        </div>
+
         <div class="card" style="margin-bottom:16px;" v-else-if="activeSummary.content">
           <div class="summary-content" v-html="renderMarkdown(activeSummary.content)"></div>
         </div>
@@ -406,7 +417,22 @@ function renderRiskChart() {
     return
   }
   const riskMap = { '低': 1, '中': 2, '高': 3 }
-  const labels = riskTrend.map((_, i) => `简报${i + 1}`)
+  // 使用 time_labels 作为时间轴横坐标，动态适应不同长度
+  const allTimeLabels = trends.time_labels || []
+  let labels
+  if (allTimeLabels.length >= riskTrend.length) {
+    // time_labels 足够长，取最后 riskTrend.length 个与风险数据对齐
+    labels = allTimeLabels.slice(allTimeLabels.length - riskTrend.length)
+  } else if (allTimeLabels.length > 0) {
+    // time_labels 比 riskTrend 短，用 time_labels 加上补齐的简报标签
+    labels = [...allTimeLabels]
+    for (let i = allTimeLabels.length; i < riskTrend.length; i++) {
+      labels.push(`简报${i + 1}`)
+    }
+  } else {
+    // 无 time_labels 时使用简报序号
+    labels = riskTrend.map((_, i) => `简报${i + 1}`)
+  }
   riskInstance.setOption({
     tooltip: {
       trigger: 'axis',
@@ -420,7 +446,7 @@ function renderRiskChart() {
     xAxis: {
       type: 'category',
       data: labels,
-      axisLabel: { fontSize: 11 }
+      axisLabel: { fontSize: 11, rotate: labels.length > 6 ? 30 : 0 }
     },
     yAxis: {
       type: 'value',
