@@ -21,14 +21,14 @@
 
       <!-- 当前简报 (简洁结构) -->
       <template v-if="activeSummary && activeSummary.summaryType !== 'skipped'">
-        <!-- 标题 + 风险评级（一行） -->
+        <!-- 标题 + 风险评级 -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-header">
             <span class="card-title">🤖 {{ jsonData.title || activeSummary.title }}</span>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span class="risk-badge" :class="'risk-' + activeSummary.riskLevel">{{ formatRisk(activeSummary.riskLevel) }}</span>
-              <span v-if="jsonData.risk_reason" style="font-size:12px;color:#666;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" :title="jsonData.risk_reason">{{ jsonData.risk_reason }}</span>
-            </div>
+          </div>
+          <div class="risk-section">
+            <span class="risk-badge" :class="'risk-' + activeSummary.riskLevel">{{ formatRisk(activeSummary.riskLevel) }}</span>
+            <span v-if="jsonData.risk_reason" class="risk-reason">原因：{{ jsonData.risk_reason }}</span>
           </div>
         </div>
 
@@ -578,6 +578,20 @@ onUnmounted(() => {
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.risk-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 0 4px 0;
+}
+
+.risk-reason {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+  flex: 1;
 }
 
 .risk-low,
