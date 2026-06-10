@@ -91,12 +91,7 @@
         </div>
       </template>
 
-      <!-- 跳过状态提示 -->
-      <div v-if="activeSummary && activeSummary.summaryType === 'skipped'" class="card" style="text-align:center;padding:30px;color:#888;">
-        ⏭️ {{ activeSummary.title }}
-        <p style="margin-top:8px;font-size:12px;">{{ formatTime(activeSummary.createTime) }}</p>
-      </div>
-
+      <!-- 简报为空时的提示 -->
       <div v-if="!activeSummary" class="card" style="margin-bottom:16px;text-align:center;padding:40px;color:#aaa;">
         暂无简报数据，等待自动生成...
       </div>
@@ -122,13 +117,10 @@
             <tbody>
               <tr v-for="s in summaryList" :key="s.id"
                   @click="selectSummary(s)"
-                  :class="{ 'row-expanded': activeSummary && activeSummary.id === s.id, 'row-skipped': s.summaryType === 'skipped' }"
+                  :class="{ 'row-expanded': activeSummary && activeSummary.id === s.id }"
                   style="cursor:pointer;">
                 <td style="white-space:nowrap;">{{ formatTime(s.createTime) }}</td>
-                <td>
-                  <span v-if="s.summaryType === 'skipped'" style="color:#aaa;font-style:italic;">⏭️ 跳过</span>
-                  <strong v-else>{{ getDisplayTitle(s) }}</strong>
-                </td>
+                <td><strong>{{ getDisplayTitle(s) }}</strong></td>
                 <td><span class="risk-badge" :class="'risk-' + s.riskLevel">{{ formatRisk(s.riskLevel) }}</span></td>
                 <td>{{ s.newsCount }}新闻 + {{ s.socialCount }}社交</td>
                 <td style="font-size:12px;">{{ s.modelName }}</td>
@@ -216,7 +208,7 @@ async function loadSummaries() {
     const params = { pageNum: pageNum.value, pageSize: pageSize.value }
     if (riskFilter.value) params.riskLevel = riskFilter.value
     const res = await request({ url: '/system/sentiment/aiSummary/list', method: 'get', params })
-    summaryList.value = res.rows || []
+    summaryList.value = (res.rows || []).filter(s => s.summaryType !== 'skipped')
     total.value = res.total || 0
   } catch (e) {
     ElMessage.error('加载简报列表失败')
