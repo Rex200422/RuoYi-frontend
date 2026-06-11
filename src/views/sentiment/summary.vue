@@ -567,16 +567,17 @@ function renderPlatformChart() {
   for (const [name, values] of Object.entries(platformTrends)) {
     series.push({
       name: name,
-      type: 'bar',
-      stack: 'total',
-      emphasis: { focus: 'series' },
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
       itemStyle: { color: colors[idx % colors.length] },
       data: values
     })
     idx++
   }
   platformInstance.setOption({
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: { trigger: 'axis' },
     legend: { type: 'scroll', bottom: 0, textStyle: { fontSize: 11 } },
     grid: { left: '3%', right: '4%', bottom: '12%', top: '8%', containLabel: true },
     xAxis: {
