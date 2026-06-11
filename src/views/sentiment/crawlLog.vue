@@ -13,7 +13,7 @@
         <div class="card-header"><span class="card-title"><span class="dot dot-green"></span>爬取任务日志</span><span class="count-indicator">共 {{ crawlLogTotal }} 条{{ crawlLogSelectedSites.size > 0 ? ' (已筛选)' : '' }}</span></div>
         <div class="table-wrapper">
           <table v-if="filteredCrawlLogs.length > 0">
-            <thead><tr><th>站点名称</th><th>关键词</th><th>状态</th><th>开始时间</th><th>结束时间</th><th>抓取数</th><th>新增数</th><th>更新数</th><th>错误信息</th></tr></thead>
+            <thead><tr><th>站点名称</th><th>关键词</th><th>状态</th><th>开始时间</th><th>结束时间</th><th>抓取数</th><th>新增数</th><th>更新数</th><th>错误信息</th><th>操作</th></tr></thead>
             <tbody>
               <tr v-for="log in filteredCrawlLogs" :key="log.id">
                 <td><span class="site-badge">{{ log.siteName }}</span></td>
@@ -27,6 +27,10 @@
                 <td>
                   <el-tooltip v-if="log.errorMsg" :content="log.errorMsg" placement="top" :show-after="300"><span class="error-hint">⚠️ 查看详情</span></el-tooltip>
                   <span v-else style="color:#aaa;font-size:12px;">—</span>
+                </td>
+                <td>
+                  <button class="btn btn-outline btn-sm" style="font-size:11px;margin-right:4px;" @click="previewLog(log)">📋 预览</button>
+                  <button class="btn btn-outline btn-sm" style="font-size:11px;" @click="downloadLog(log)">⬇️ 下载</button>
                 </td>
               </tr>
             </tbody>
@@ -55,6 +59,23 @@ const filteredCrawlLogs = computed(() => {
   return list
 })
 function handleCrawlLogFilter(f) { if (f === 'all') { crawlLogSelectedSites.value = new Set() } else { const s = new Set(crawlLogSelectedSites.value); s.has(f) ? s.delete(f) : s.add(f); crawlLogSelectedSites.value = s } }
+
+function previewLog(log) {
+  const url = `/system/sentiment/crawlLog/log/${log.id}/preview?lines=500`
+  window.open(url, '_blank', 'width=900,height=700,scrollbars=yes')
+}
+
+function downloadLog(log) {
+  const url = `/system/sentiment/crawlLog/log/${log.id}`
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${log.siteName}_${log.id}.log`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  ElMessage.success('日志下载已开始')
+}
+
 async function loadCrawlLogs() {
   crawlLogsLoading.value = true
   try {
