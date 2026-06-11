@@ -89,6 +89,16 @@
             <div ref="lineChart" style="width:100%;height:360px;"></div>
           </div>
         </div>
+
+        <div class="charts-row" v-if="hasChartData">
+          <!-- 各平台事件条数趋势 -->
+          <div class="card chart-card" style="flex:1;">
+            <div class="card-header">
+              <span class="card-title">📊 各平台事件条数趋势</span>
+            </div>
+            <div ref="platformChart" style="width:100%;height:360px;"></div>
+          </div>
+        </div>
       </template>
 
       <!-- 简报为空时的提示 -->
@@ -117,11 +127,14 @@
             <tbody>
               <tr v-for="s in summaryList" :key="s.id"
                   @click="selectSummary(s)"
-                  :class="{ 'row-expanded': activeSummary && activeSummary.id === s.id }"
+                  :class="{ 'row-expanded': activeSummary && activeSummary.id === s.id, 'row-skipped': s.summaryType === 'skipped' }"
                   style="cursor:pointer;">
                 <td style="white-space:nowrap;">{{ formatTime(s.createTime) }}</td>
-                <td><strong>{{ getDisplayTitle(s) }}</strong></td>
-                <td><span class="risk-badge" :class="'risk-' + s.riskLevel">{{ formatRisk(s.riskLevel) }}</span></td>
+                <td>
+                  <span v-if="s.summaryType === 'skipped'" style="color:#aaa;font-style:italic;">⏭️ {{ s.title }}</span>
+                  <strong v-else>{{ getDisplayTitle(s) }}</strong>
+                </td>
+                <td><span v-if="s.summaryType !== 'skipped'" class="risk-badge" :class="'risk-' + s.riskLevel">{{ formatRisk(s.riskLevel) }}</span></td>
                 <td>{{ s.newsCount }}新闻 + {{ s.socialCount }}社交</td>
                 <td style="font-size:12px;">{{ s.modelName }}</td>
                 <td>{{ s.generateTime }}s</td>
@@ -166,12 +179,14 @@ const pieChart = ref(null)
 const lineChart = ref(null)
 const barChart = ref(null)
 const riskChart = ref(null)
+const platformChart = ref(null)
 
 // Chart instances
 let pieInstance = null
 let lineInstance = null
 let barInstance = null
 let riskInstance = null
+let platformInstance = null
 
 // Parsed JSON data
 const jsonData = ref({})
@@ -208,7 +223,7 @@ async function loadSummaries() {
     const params = { pageNum: pageNum.value, pageSize: pageSize.value }
     if (riskFilter.value) params.riskLevel = riskFilter.value
     const res = await request({ url: '/system/sentiment/aiSummary/list', method: 'get', params })
-    summaryList.value = (res.rows || []).filter(s => s.summaryType !== 'skipped')
+    summaryList.value = res.rows || []
     total.value = res.total || 0
   } catch (e) {
     ElMessage.error('加载简报列表失败')
@@ -324,6 +339,7 @@ function renderAllCharts() {
   renderBarChart()
   renderRiskChart()
   renderLineChart()
+  renderPlatformChart()
 }
 
 function destroyCharts() {
@@ -331,6 +347,7 @@ function destroyCharts() {
   if (lineInstance) { lineInstance.dispose(); lineInstance = null }
   if (barInstance) { barInstance.dispose(); barInstance = null }
   if (riskInstance) { riskInstance.dispose(); riskInstance = null }
+  if (platformInstance) { platformInstance.dispose(); platformInstance = null }
 }
 
 function renderPieChart() {
@@ -531,10 +548,56 @@ function renderLineChart() {
   })
 }
 
+
+function renderPlatformChart() {
+  if (!platformChart.value) return
+  platformInstance = echarts.init(platformChart.value)
+  const trends = jsonData.value.trends || {}
+  const platformTrends = trends.platform_trends || {}
+  const platLabels = trends.platform_time_labels || []
+  if (Object.keys(platformTrends).length === 0) {
+    platformInstance.setOption({
+      title: { text: '暂无平台数据', left: 'center', top: 'center', textStyle: { color: '#aaa', fontSize: 14, fontWeight: 'normal' } }
+    })
+    return
+  }
+  const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc']
+  const series = []
+  let idx = 0
+  for (const [name, values] of Object.entries(platformTrends)) {
+    series.push({
+      name: name,
+      type: 'bar',
+      stack: 'total',
+      emphasis: { focus: 'series' },
+      itemStyle: { color: colors[idx % colors.length] },
+      data: values
+    })
+    idx++
+  }
+  platformInstance.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { type: 'scroll', bottom: 0, textStyle: { fontSize: 11 } },
+    grid: { left: '3%', right: '4%', bottom: '12%', top: '8%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: platLabels,
+      axisLabel: { fontSize: 11, rotate: platLabels.length > 6 ? 30 : 0 }
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1
+    },
+    series: series
+  })
+}
+
+// Window resize handler
 // Window resize handler
 function handleResize() {
   pieInstance && pieInstance.resize()
   lineInstance && lineInstance.resize()
+  platformInstance && platformInstance.resize()
   barInstance && barInstance.resize()
   riskInstance && riskInstance.resize()
 }
