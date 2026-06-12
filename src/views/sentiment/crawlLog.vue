@@ -47,6 +47,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import request from '@/utils/request'
 import { listCrawlLog } from '@/api/sentiment/crawl'
 import { parseKeywords, formatCrawlStatus } from './utils'
 const crawlLogs = ref([]); const crawlLogTotal = ref(0); const crawlLogsLoading = ref(false)
@@ -61,19 +62,33 @@ const filteredCrawlLogs = computed(() => {
 function handleCrawlLogFilter(f) { if (f === 'all') { crawlLogSelectedSites.value = new Set() } else { const s = new Set(crawlLogSelectedSites.value); s.has(f) ? s.delete(f) : s.add(f); crawlLogSelectedSites.value = s } }
 
 function previewLog(log) {
-  const url = `/system/sentiment/crawlLog/log/${log.id}/preview?lines=500`
-  window.open(url, '_blank', 'width=900,height=700,scrollbars=yes')
+  request({ url: `/system/sentiment/crawlLog/log/${log.id}/preview?lines=500`, method: 'get' })
+    .then(res => {
+      if (res.code === 200 && res.data) {
+        const content = res.data.content || '日志内容为空'
+        const w = window.open('', '_blank', 'width=900,height=700,scrollbars=yes')
+        w.document.write('<pre style="font-size:12px;font-family:monospace;white-space:pre-wrap;">' + content.replace(/</g, '&lt;') + '</pre>')
+        w.document.close()
+      } else {
+        ElMessage.warning(res.msg || '无法预览日志')
+      }
+    })
+    .catch(() => ElMessage.error('预览日志失败'))
 }
 
 function downloadLog(log) {
-  const url = `/system/sentiment/crawlLog/log/${log.id}`
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${log.siteName}_${log.id}.log`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  ElMessage.success('日志下载已开始')
+  request({ url: `/system/sentiment/crawlLog/log/${log.id}`, method: 'get', responseType: 'blob' })
+    .then(res => {
+      const blob = new Blob([res], { type: 'text/plain' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${log.siteName}_${log.id}.log`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      ElMessage.success('日志下载完成')
+    })
+    .catch(() => ElMessage.error('下载日志失败'))
 }
 
 async function loadCrawlLogs() {
