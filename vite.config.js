@@ -58,6 +58,10 @@ export default defineConfig(({ mode, command }) => {
           target: baseUrl,
           changeOrigin: true
         },
+        '/system/sentiment/crawlLog': {
+          target: baseUrl,
+          changeOrigin: true
+        },
          // springdoc proxy
          '^/v3/api-docs/(.*)': {
           target: baseUrl,
