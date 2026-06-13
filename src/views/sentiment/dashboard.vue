@@ -144,7 +144,7 @@ async function loadData() {
     newsList.value = nr.rows || []; newsTotal.value = nr.total || 0
   } catch (e) { console.error('加载仪表盘数据失败:', e) }
 }
-onMounted(() => { loadData() })
+onMounted(() => { loadPlatforms(); loadData() })
 </script>
 
 <style>
