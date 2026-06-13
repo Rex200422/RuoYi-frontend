@@ -107,11 +107,6 @@ async function loadPlatforms() {
   } catch (e) { console.error('加载平台列表失败:', e) }
 }
 const allSources = computed(() => allPlatforms.value.map(p => p.platform_name))
-  const s = new Set()
-  postList.value.forEach(p => { if (p.siteName) s.add(p.siteName) })
-  newsList.value.forEach(a => { if (a.source) s.add(a.source) })
-  return Array.from(s)
-})
 const hotTopics = computed(() => {
   const kc = {}
   postList.value.forEach(p => parseKeywords(p.triggerKeyword).forEach(k => { kc[k] = (kc[k] || 0) + 1 }))
