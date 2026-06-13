@@ -5,8 +5,8 @@
       <div class="filter-bar">
         <span class="filter-bar-label">来源：</span>
         <div class="filter-pills">
-          <span class="filter-pill" :class="{ active: newsSelectedSources.size === 0 }" @click="handleNewsFilter('all')">全部来源</span>
-          <span v-for="p in allPlatforms" :key="p.platform_name" class="filter-pill" :class="{ active: newsSelectedSources.has(p.platform_name) }" @click="handleNewsFilter(p.platform_name)">{{ p.icon }} {{ p.display_name || p.platform_name }}</span>
+          <span class="filter-pill" :class="{ active: newsSelectedSource === '' }" @click="handleNewsFilter('')">全部来源</span>
+          <span v-for="p in allPlatforms" :key="p.platform_name" class="filter-pill" :class="{ active: newsSelectedSource === p.platform_name }" @click="handleNewsFilter(p.platform_name)">{{ p.icon }} {{ p.display_name || p.platform_name }}</span>
         </div>
       </div>
       <!-- 搜索行 -->
@@ -17,13 +17,13 @@
       <div class="card">
         <div class="card-header">
           <span class="card-title"><span class="dot dot-green"></span>新闻资讯文章列表</span>
-          <span class="count-indicator">共 {{ newsTotal }} 条{{ newsSelectedSources.size > 0 ? ' (已筛选)' : '' }}</span>
+          <span class="count-indicator">共 {{ newsTotal }} 条{{ newsSelectedSource ? ' (已筛选)' : '' }}</span>
         </div>
         <div class="table-wrapper">
-          <table v-if="filteredNewsList.length > 0">
+          <table v-if="newsList.length > 0">
             <thead><tr><th>封面</th><th>来源</th><th>标题</th><th>日期</th><th>关键词</th><th>操作</th></tr></thead>
             <tbody>
-              <tr v-for="article in filteredNewsList" :key="article.id" class="post-row" @click="viewNewsDetail(article)">
+              <tr v-for="article in newsList" :key="article.id" class="post-row" @click="viewNewsDetail(article)">
                 <td>
                   <div v-if="article.coverImage" class="news-cover-thumb" @click.stop>
                     <img :src="getCoverUrl(article.coverImage)" :alt="article.title" @error="e => e.target.style.display='none'" />
@@ -38,7 +38,7 @@
               </tr>
             </tbody>
           </table>
-          <div v-else class="empty-state"><div class="icon">📭</div><p>没有匹配的文章</p></div>
+          <div v-else class="empty-state"><div class="icon">📭</div><p>暂无新闻数据</p></div>
         </div>
         <div class="pagination-wrapper">
           <el-pagination v-model:current-page="newsQuery.pageNum" v-model:page-size="newsQuery.pageSize" :page-sizes="[10, 20, 50, 100]" :total="newsTotal" layout="total, sizes, prev, pager, next, jumper" @size-change="loadNews" @current-change="loadNews" />
@@ -64,14 +64,14 @@
   </div>
 </template>
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listNews } from '@/api/sentiment/news'
 import { parseKeywords, formatContent } from './utils'
 import request from '@/utils/request'
 
 const newsList = ref([]); const newsTotal = ref(0); const newsLoading = ref(false)
-const newsSearch = ref(''); const newsSelectedSources = ref(new Set())
+const newsSearch = ref(''); const newsSelectedSource = ref('')
 const newsQuery = reactive({ pageNum: 1, pageSize: 20, searchValue: '' })
 const allPlatforms = ref([])
 const showModal = ref(false); const currentNews = ref(null)
@@ -86,9 +86,12 @@ function getCoverUrl(img) {
   return img
 }
 
-const filteredNewsList = computed(() => newsSelectedSources.value.size === 0 ? newsList.value : newsList.value.filter(a => newsSelectedSources.value.has(a.source)))
+function handleNewsFilter(f) {
+  newsSelectedSource.value = f
+  newsQuery.pageNum = 1
+  loadNews()
+}
 function showToast(msg) { toastMessage.value = msg; toastVisible.value = true; if (toastTimeout) clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { toastVisible.value = false }, 2200) }
-function handleNewsFilter(f) { if (f === 'all') { newsSelectedSources.value = new Set() } else { const s = new Set(newsSelectedSources.value); s.has(f) ? s.delete(f) : s.add(f); newsSelectedSources.value = s } }
 
 async function loadPlatforms() {
   try {
@@ -99,7 +102,10 @@ async function loadPlatforms() {
 
 async function loadNews() {
   newsLoading.value = true
-  try { const p = { pageNum: newsQuery.pageNum, pageSize: newsQuery.pageSize }; if (newsSearch.value) p.searchValue = newsSearch.value
+  try {
+    const p = { pageNum: newsQuery.pageNum, pageSize: newsQuery.pageSize }
+    if (newsSearch.value) p.searchValue = newsSearch.value
+    if (newsSelectedSource.value) p.source = newsSelectedSource.value
     const res = await listNews(p); newsList.value = res.rows || []; newsTotal.value = res.total || 0
   } catch (e) { ElMessage.error('加载报刊数据失败') } finally { newsLoading.value = false }
 }

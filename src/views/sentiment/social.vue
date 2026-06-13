@@ -5,8 +5,8 @@
       <div class="filter-bar">
         <span class="filter-bar-label">平台：</span>
         <div class="filter-pills">
-          <span class="filter-pill" :class="{ active: postFilterActive === 'all' }" @click="postFilterActive = 'all'">全部</span>
-          <span v-for="p in allPlatforms" :key="p.platform_name" class="filter-pill" :class="{ active: postFilterActive === p.platform_name }" @click="postFilterActive = p.platform_name">{{ p.icon }} {{ p.display_name || p.platform_name }}</span>
+          <span class="filter-pill" :class="{ active: postFilterActive === 'all' }" @click="handlePostFilter('all')">全部</span>
+          <span v-for="p in allPlatforms" :key="p.platform_name" class="filter-pill" :class="{ active: postFilterActive === p.platform_name }" @click="handlePostFilter(p.platform_name)">{{ p.icon }} {{ p.display_name || p.platform_name }}</span>
         </div>
       </div>
       <!-- 搜索行 -->
@@ -23,10 +23,10 @@
           <span class="count-indicator">共 {{ postTotal }} 条</span>
         </div>
         <div class="table-wrapper">
-          <table v-if="filteredPostList.length > 0">
+          <table v-if="postList.length > 0">
             <thead><tr><th>网站</th><th>关键词</th><th>标题</th><th>作者</th><th>发布时间</th><th>点赞</th><th>评论数</th><th>操作</th></tr></thead>
             <tbody>
-              <template v-for="post in filteredPostList" :key="post.uuid">
+              <template v-for="post in postList" :key="post.uuid">
                 <tr class="post-row" :class="{ 'row-expanded': expandedPosts.has(post.postId) }" @click="toggleCommentExpansion(post.postId)">
                   <td><span class="site-badge">{{ post.siteName }}</span></td>
                   <td><span v-for="kw in parseKeywords(post.triggerKeyword)" :key="kw" class="keyword-tag" style="font-size:11px;">{{ kw }}</span></td>
@@ -56,7 +56,7 @@
               </template>
             </tbody>
           </table>
-          <div v-else class="empty-state"><div class="icon">🔍</div><p>没有匹配的帖子</p></div>
+          <div v-else class="empty-state"><div class="icon">🔍</div><p>暂无帖子数据</p></div>
         </div>
         <div class="pagination-wrapper">
           <el-pagination v-model:current-page="postQuery.pageNum" v-model:page-size="postQuery.pageSize" :page-sizes="[10, 20, 50, 100]" :total="postTotal" layout="total, sizes, prev, pager, next, jumper" @size-change="loadPosts" @current-change="loadPosts" />
@@ -124,12 +124,12 @@ const toastVisible = ref(false)
 const toastMessage = ref('')
 let toastTimeout = null
 
-const filteredPostList = computed(() => {
-  let list = postList.value
-  if (postFilterActive.value !== 'all') list = list.filter(p => p.siteName === postFilterActive.value)
-  return list
-})
-const allExpanded = computed(() => filteredPostList.value.length > 0 && filteredPostList.value.every(p => expandedPosts.value.has(p.postId)))
+function handlePostFilter(siteName) {
+  postFilterActive.value = siteName
+  postQuery.pageNum = 1
+  loadPosts()
+}
+const allExpanded = computed(() => postList.value.length > 0 && postList.value.every(p => expandedPosts.value.has(p.postId)))
 
 function showToast(msg) { toastMessage.value = msg; toastVisible.value = true; if (toastTimeout) clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { toastVisible.value = false }, 2200) }
 
@@ -145,6 +145,7 @@ async function loadPosts() {
   try {
     const params = { pageNum: postQuery.pageNum, pageSize: postQuery.pageSize }
     if (postSearch.value) params.searchValue = postSearch.value
+    if (postFilterActive.value !== 'all') params.siteName = postFilterActive.value
     const res = await listPost(params); postList.value = res.rows || []; postTotal.value = res.total || 0
   } catch (e) { console.error('加载帖子失败:', e); ElMessage.error('加载社交媒体数据失败') }
   finally { postLoading.value = false }
@@ -162,7 +163,7 @@ function toggleCommentExpansion(postId) {
 }
 function getPostComments(postId) { return commentsMap.value[postId] || [] }
 function expandAllComments() {
-  const ids = filteredPostList.value.map(p => p.postId)
+  const ids = postList.value.map(p => p.postId)
   if (ids.every(id => expandedPosts.value.has(id))) { expandedPosts.value = new Set(); showToast('已折叠全部评论') }
   else { expandedPosts.value = new Set(ids); ids.forEach(id => loadComments(id)); showToast('已展开全部评论') }
 }
