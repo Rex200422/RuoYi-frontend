@@ -76,6 +76,7 @@ import { useRouter } from 'vue-router'
 import { listPost } from '@/api/sentiment/post'
 import { listNews } from '@/api/sentiment/news'
 import { parseKeywords, formatNumber } from './utils'
+import request from '@/utils/request'
 
 const router = useRouter()
 const postTotal = ref(0)
