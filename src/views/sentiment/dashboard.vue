@@ -99,7 +99,14 @@ const allKeywords = computed(() => {
   newsList.value.forEach(a => parseKeywords(a.keywords).forEach(k => s.add(k)))
   return Array.from(s)
 })
-const allSources = computed(() => {
+const allPlatforms = ref([])
+async function loadPlatforms() {
+  try {
+    const res = await request({ url: '/system/sentiment/platform/list', method: 'get' })
+    allPlatforms.value = res.data || []
+  } catch (e) { console.error('加载平台列表失败:', e) }
+}
+const allSources = computed(() => allPlatforms.value.map(p => p.platform_name))
   const s = new Set()
   postList.value.forEach(p => { if (p.siteName) s.add(p.siteName) })
   newsList.value.forEach(a => { if (a.source) s.add(a.source) })

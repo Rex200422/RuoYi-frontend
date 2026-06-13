@@ -60,7 +60,7 @@ function handleCrawlLogFilter(f) {
 }
 async function loadPlatforms() {
   try {
-    const res = await request({ url: '/system/sentiment/platform/listByCategory', method: 'get', params: { category: 'social' } })
+    const res = await request({ url: '/system/sentiment/platform/listByCategory', method: 'get', params: { category: 'all' } })
     allPlatforms.value = res.data || []
   } catch (e) { console.error('加载平台列表失败:', e) }
 }
