@@ -5,6 +5,7 @@
       <el-form-item prop="username">
         <el-input
           v-model="loginForm.username"
+          autocomplete="off"
           type="text"
           size="large"
           auto-complete="off"
@@ -79,8 +80,8 @@ const router = useRouter()
 const { proxy } = getCurrentInstance()
 
 const loginForm = ref({
-  username: "admin",
-  password: "admin123",
+  username: "",
+  password: "",
   rememberMe: false,
   code: "",
   uuid: ""
@@ -151,14 +152,9 @@ function getCode() {
 }
 
 function getCookie() {
-  const username = Cookies.get("username")
-  const password = Cookies.get("password")
+  // 不再自动填充用户名密码
   const rememberMe = Cookies.get("rememberMe")
-  loginForm.value = {
-    username: username === undefined ? loginForm.value.username : username,
-    password: password === undefined ? loginForm.value.password : decrypt(password),
-    rememberMe: rememberMe === undefined ? false : Boolean(rememberMe)
-  }
+  loginForm.value.rememberMe = rememberMe === undefined ? false : Boolean(rememberMe)
 }
 
 getCode()
