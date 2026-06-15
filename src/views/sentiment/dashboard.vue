@@ -65,6 +65,23 @@
           </div>
         </div>
       </div>
+
+      <!-- Bluesky作者词云 -->
+      <div class="card" style="margin-top:12px;">
+        <div class="card-header">
+          <span class="card-title">🗣️ Bluesky 活跃作者分布</span>
+          <span class="count-indicator">共 {{ authorCloudData.length }} 位作者</span>
+        </div>
+        <div class="author-cloud">
+          <span v-for="(item, index) in authorCloudData" :key="item.name"
+                :class="['author-cloud-item', item.sizeClass, authorColorClass(index)]"
+                :title="item.name + ': ' + item.value + '条帖子'"
+                @click="showToast('🔍 作者: ' + item.name)">
+            {{ item.shortName }}<small>({{ item.value }})</small>
+          </span>
+          <div v-if="authorCloudData.length === 0" style="color:#aaa;font-size:12px;padding:12px;">加载中...</div>
+        </div>
+      </div>
     </div>
     <div v-if="toastVisible" class="toast">{{ toastMessage }}</div>
   </div>
@@ -145,9 +162,62 @@ async function loadData() {
     newsList.value = nr.rows || []; newsTotal.value = nr.total || 0
   } catch (e) { console.error('加载仪表盘数据失败:', e) }
 }
-onMounted(() => { loadPlatforms(); loadData() })
+
+const authorCloudData = ref([])
+async function loadAuthorCloud() {
+  try {
+    const res = await request({ url: '/system/sentiment/post/authorStats', method: 'get', params: { siteName: 'Bluesky', limit: 60 } })
+    const data = res.data || []
+    // 计算尺寸等级
+    const maxVal = Math.max(...data.map(d => d.value), 1)
+    authorCloudData.value = data.map(d => {
+      const ratio = d.value / maxVal
+      const sizeClass = ratio > 0.5 ? 'size-xl' : ratio > 0.3 ? 'size-l' : ratio > 0.15 ? 'size-m' : 'size-s'
+      // 缩短作者名（去掉.bsky.social后缀）
+      const shortName = d.name.replace('.bsky.social', '').replace('.ap.brid.gy', '').replace('.com', '')
+      return { ...d, sizeClass, shortName }
+    })
+  } catch (e) { console.error('加载作者词云失败:', e) }
+}
+function authorColorClass(i) { return ['ac-c1','ac-c2','ac-c3','ac-c4','ac-c5'][i % 5] }
+onMounted(() => { loadPlatforms(); loadData(); loadAuthorCloud() })
 </script>
 
 <style>
 @import './common.css';
+
+/* 作者词云 */
+.author-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px;
+  justify-content: center;
+  align-items: baseline;
+}
+.author-cloud-item {
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  opacity: 0.85;
+  font-weight: 500;
+}
+.author-cloud-item:hover {
+  transform: scale(1.15);
+  opacity: 1;
+}
+.author-cloud-item small {
+  font-size: 0.7em;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+.author-cloud-item.size-xl { font-size: 22px; font-weight: 700; }
+.author-cloud-item.size-l { font-size: 17px; font-weight: 600; }
+.author-cloud-item.size-m { font-size: 13px; font-weight: 500; }
+.author-cloud-item.size-s { font-size: 10px; font-weight: 400; opacity: 0.7; }
+
+.ac-c1 { color: #e74c3c; }
+.ac-c2 { color: #3498db; }
+.ac-c3 { color: #2ecc71; }
+.ac-c4 { color: #9b59b6; }
+.ac-c5 { color: #f39c12; }
 </style>
