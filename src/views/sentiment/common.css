@@ -776,6 +776,10 @@ table tbody tr,
   background: #eef1fe;
   color: #4f6ef7;
 }
+.status-pending {
+  background: #fef9e7;
+  color: #c7a500;
+}
 
 /* ========== Error Hint ========== */
 .error-hint {

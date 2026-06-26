@@ -28,7 +28,7 @@ export function formatInterval(minutes) {
 }
 
 export function formatCrawlStatus(status) {
-  const map = { success: '成功', failed: '失败', running: '运行中' }
+  const map = { success: '成功', failed: '失败', running: '运行中', pending: '排队中' }
   return map[status] || status || '未知'
 }
 
